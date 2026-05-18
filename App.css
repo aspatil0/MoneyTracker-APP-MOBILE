@@ -1,0 +1,31 @@
+.datePicker {
+    width: 100%;
+}
+
+.react-datepicker-wrapper {
+    width: 100%;
+}
+
+.react-datepicker__input-container input {
+
+    width: 100%;
+
+    padding: 14px;
+
+    border-radius: 10px;
+
+    border: none;
+
+    outline: none;
+
+    background-color: white;
+
+    font-size: 16px;
+
+}
+
+.react-datepicker-popper {
+
+    z-index: 999999 !important;
+
+}
