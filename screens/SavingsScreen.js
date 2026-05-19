@@ -1,236 +1,382 @@
+// screens/SavingsScreen.js
+
+import React, {
+    useEffect,
+    useState,
+} from 'react';
+
 import {
     View,
     Text,
     StyleSheet,
-    Dimensions,
     ScrollView,
-    TouchableOpacity,
+    Dimensions,
+    TextInput,
 } from 'react-native';
 
-import { useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {
     LineChart,
 } from 'react-native-chart-kit';
 
+const screenWidth =
+    Dimensions.get('window').width;
+
 export default function SavingsScreen() {
 
-    const [selectedYear, setSelectedYear] =
-        useState('2026');
+    const currentDate =
+        new Date();
 
-    const [selectedMonth, setSelectedMonth] =
-        useState('March');
+    const currentMonth =
+        String(
+            currentDate.getMonth() + 1
+        ).padStart(2, '0');
 
-    const [showYears, setShowYears] =
-        useState(false);
+    const currentYear =
+        currentDate
+            .getFullYear()
+            .toString();
 
-    const [showMonths, setShowMonths] =
-        useState(false);
+    const [year, setYear] =
+        useState(currentYear);
 
-    const years = [
-        '2026',
-        '2025',
-        '2024',
-        '2023',
-    ];
+    const [month, setMonth] =
+        useState(currentMonth);
 
-    const months = [
-        'January',
-        'February',
-        'March',
-        'April',
-        'May',
-        'June',
-        'July',
-        'August',
-        'September',
-        'October',
-        'November',
-        'December',
-    ];
+    const [income, setIncome] =
+        useState(0);
 
-    const savingsData = {
+    const [credited, setCredited] =
+        useState(0);
 
-        January: 10000,
-        February: 15000,
-        March: 9000,
-        April: 18000,
-        May: 23000,
-        June: 12000,
-        July: 16000,
-        August: 21000,
-        September: 13000,
-        October: 25000,
-        November: 17000,
-        December: 30000,
+    const [debited, setDebited] =
+        useState(0);
+
+    const [monthSavings,
+        setMonthSavings] =
+        useState(0);
+
+    const [yearlySavings,
+        setYearlySavings] =
+        useState(
+            Array(12).fill(0)
+        );
+
+    const loadData = async () => {
+
+        try {
+
+            const incomeHistory =
+
+                JSON.parse(
+
+                    await AsyncStorage.getItem(
+                        'incomeHistory'
+                    )
+
+                ) || [];
+
+            const transactions =
+
+                JSON.parse(
+
+                    await AsyncStorage.getItem(
+                        'transactions'
+                    )
+
+                ) || [];
+
+            let totalIncome = 0;
+
+            let totalCredit = 0;
+
+            let totalDebit = 0;
+
+            let yearlyArray =
+                Array(12).fill(0);
+
+            // INCOME
+
+            incomeHistory.forEach((item) => {
+
+                const splitDate =
+                    item.date.split('-');
+
+                const itemYear =
+                    splitDate[0];
+
+                const itemMonth =
+                    splitDate[1];
+
+                const monthIndex =
+                    Number(itemMonth) - 1;
+
+                if (
+                    itemYear === year
+                ) {
+
+                    yearlyArray[
+                        monthIndex
+                    ] += Number(
+                        item.amount
+                    );
+
+                }
+
+                if (
+
+                    itemYear === year &&
+
+                    itemMonth === month
+
+                ) {
+
+                    totalIncome +=
+                        Number(
+                            item.amount
+                        );
+
+                }
+
+            });
+
+            // TRANSACTIONS
+
+            transactions.forEach((item) => {
+
+                const splitDate =
+                    item.date.split('-');
+
+                const itemYear =
+                    splitDate[0];
+
+                const itemMonth =
+                    splitDate[1];
+
+                const monthIndex =
+                    Number(itemMonth) - 1;
+
+                if (
+                    itemYear === year
+                ) {
+
+                    if (
+                        item.type ===
+                        'credited'
+                    ) {
+
+                        yearlyArray[
+                            monthIndex
+                        ] += Number(
+                            item.amount
+                        );
+
+                    }
+
+                    if (
+                        item.type ===
+                        'debited'
+                    ) {
+
+                        yearlyArray[
+                            monthIndex
+                        ] -= Number(
+                            item.amount
+                        );
+
+                    }
+
+                }
+
+                if (
+
+                    itemYear === year &&
+
+                    itemMonth === month
+
+                ) {
+
+                    if (
+                        item.type ===
+                        'credited'
+                    ) {
+
+                        totalCredit +=
+                            Number(
+                                item.amount
+                            );
+
+                    }
+
+                    if (
+                        item.type ===
+                        'debited'
+                    ) {
+
+                        totalDebit +=
+                            Number(
+                                item.amount
+                            );
+
+                    }
+
+                }
+
+            });
+
+            const finalMonthSavings =
+
+                totalIncome +
+
+                totalCredit -
+
+                totalDebit;
+
+            setIncome(totalIncome);
+
+            setCredited(totalCredit);
+
+            setDebited(totalDebit);
+
+            setMonthSavings(
+                finalMonthSavings
+            );
+
+            setYearlySavings(
+                yearlyArray
+            );
+
+        }
+
+        catch (error) {
+
+            console.log(error);
+
+        }
 
     };
 
-    const currentSavings =
-        savingsData[selectedMonth] || 0;
+    useEffect(() => {
+
+        loadData();
+
+    }, [year, month]);
 
     return (
 
-        <ScrollView style={styles.container}>
+        <ScrollView
+            style={styles.container}
+        >
 
             <Text style={styles.heading}>
                 Savings
             </Text>
 
-            {/* YEAR SELECTION */}
+            {/* YEAR */}
 
-            <View style={styles.selectBox}>
+            <Text style={styles.label}>
+                Year
+            </Text>
 
-                <Text style={styles.selectLabel}>
-                    Select Year
+            <TextInput
+
+                value={year}
+
+                onChangeText={setYear}
+
+                placeholder="2025"
+
+                placeholderTextColor="#64748b"
+
+                keyboardType="numeric"
+
+                style={styles.input}
+
+            />
+
+            {/* MONTH */}
+
+            <Text style={styles.label}>
+                Month
+            </Text>
+
+            <TextInput
+
+                value={month}
+
+                onChangeText={setMonth}
+
+                placeholder="05"
+
+                placeholderTextColor="#64748b"
+
+                keyboardType="numeric"
+
+                style={styles.input}
+
+            />
+
+            {/* MONTH SAVINGS */}
+
+            <View style={styles.mainCard}>
+
+                <Text style={styles.mainTitle}>
+                    Monthly Savings
                 </Text>
 
-                <TouchableOpacity
-                    style={styles.dropdown}
-                    onPress={() =>
-                        setShowYears(!showYears)
-                    }
-                >
+                <Text style={styles.mainAmount}>
+                    ₹ {monthSavings}
+                </Text>
 
-                    <Text style={styles.dropdownText}>
-                        {selectedYear} ▼
+            </View>
+
+            {/* SMALL STATS */}
+
+            <View style={styles.row}>
+
+                <View style={styles.smallCard}>
+
+                    <Text style={styles.smallTitle}>
+                        Income
                     </Text>
 
-                </TouchableOpacity>
-
-                {
-                    showYears && (
-
-                        <View style={styles.optionBox}>
-
-                            {
-                                years.map((year) => (
-
-                                    <TouchableOpacity
-                                        key={year}
-
-                                        style={styles.optionButton}
-
-                                        onPress={() => {
-
-                                            setSelectedYear(year);
-
-                                            setShowYears(false);
-
-                                        }}
-                                    >
-
-                                        <Text style={styles.optionText}>
-                                            {year}
-                                        </Text>
-
-                                    </TouchableOpacity>
-
-                                ))
-                            }
-
-                        </View>
-
-                    )
-                }
-
-            </View>
-
-            {/* MONTH SELECTION */}
-
-            <View style={styles.selectBox}>
-
-                <Text style={styles.selectLabel}>
-                    Select Month
-                </Text>
-
-                <TouchableOpacity
-                    style={styles.dropdown}
-                    onPress={() =>
-                        setShowMonths(!showMonths)
-                    }
-                >
-
-                    <Text style={styles.dropdownText}>
-                        {selectedMonth} ▼
+                    <Text style={styles.greenText}>
+                        ₹ {income}
                     </Text>
 
-                </TouchableOpacity>
+                </View>
 
-                {
-                    showMonths && (
+                <View style={styles.smallCard}>
 
-                        <View style={styles.optionBox}>
+                    <Text style={styles.smallTitle}>
+                        Credited
+                    </Text>
 
-                            {
-                                months.map((month) => (
+                    <Text style={styles.blueText}>
+                        ₹ {credited}
+                    </Text>
 
-                                    <TouchableOpacity
-                                        key={month}
-
-                                        style={styles.optionButton}
-
-                                        onPress={() => {
-
-                                            setSelectedMonth(month);
-
-                                            setShowMonths(false);
-
-                                        }}
-                                    >
-
-                                        <Text style={styles.optionText}>
-                                            {month}
-                                        </Text>
-
-                                    </TouchableOpacity>
-
-                                ))
-                            }
-
-                        </View>
-
-                    )
-                }
+                </View>
 
             </View>
 
-            {/* SAVINGS CARD */}
+            <View style={styles.smallCardFull}>
 
-            <View style={styles.card}>
-
-                <Text style={styles.label}>
-                    Savings of {selectedMonth} {selectedYear}
+                <Text style={styles.smallTitle}>
+                    Debited
                 </Text>
 
-                <Text style={styles.savings}>
-                    ₹ {currentSavings}
+                <Text style={styles.redText}>
+                    ₹ {debited}
                 </Text>
 
             </View>
 
-            {/* DETAILS */}
+            {/* GRAPH */}
 
-            <View style={styles.detailCard}>
-
-                <Text style={styles.detailText}>
-                    Income : ₹ 30000
-                </Text>
-
-                <Text style={styles.detailText}>
-                    Credited : ₹ 5000
-                </Text>
-
-                <Text style={styles.detailText}>
-                    Debited : ₹ 12000
-                </Text>
-
-            </View>
-
-            {/* CHART */}
-
-            <Text style={styles.chartHeading}>
-                Savings Overview
+            <Text style={styles.graphTitle}>
+                Yearly Savings
             </Text>
 
             <LineChart
@@ -238,170 +384,267 @@ export default function SavingsScreen() {
                 data={{
 
                     labels: [
-                        'Jan',
-                        'Feb',
-                        'Mar',
-                        'Apr',
-                        'May',
+
+                        'J',
+                        'F',
+                        'M',
+                        'A',
+                        'M',
+                        'J',
+
+                        'J',
+                        'A',
+                        'S',
+                        'O',
+                        'N',
+                        'D',
+
                     ],
 
                     datasets: [
                         {
-                            data: [
-                                10000,
-                                15000,
-                                9000,
-                                18000,
-                                23000,
-                            ],
+                            data:
+                                yearlySavings,
                         },
                     ],
 
                 }}
 
                 width={
-                    Dimensions.get('window').width - 40
+                    screenWidth - 40
                 }
 
-                height={260}
+                height={240}
 
-                yAxisLabel="₹"
+                yAxisSuffix="₹"
 
                 chartConfig={{
 
-                    backgroundColor: '#1e293b',
+                    backgroundColor:
+                        '#111827',
 
-                    backgroundGradientFrom: '#1e293b',
+                    backgroundGradientFrom:
+                        '#111827',
 
-                    backgroundGradientTo: '#1e293b',
+                    backgroundGradientTo:
+                        '#111827',
 
                     decimalPlaces: 0,
 
                     color: (opacity = 1) =>
-                        `rgba(37,99,235,${opacity})`,
 
-                    labelColor: (opacity = 1) =>
+                        `rgba(59,130,246,${opacity})`,
+
+                    labelColor: (
+                        opacity = 1
+                    ) =>
+
                         `rgba(255,255,255,${opacity})`,
 
-                    style: {
-                        borderRadius: 20,
-                    },
-
                     propsForDots: {
-                        r: '5',
+
+                        r: '4',
+
+                        strokeWidth: '2',
+
+                        stroke: '#3b82f6',
+
                     },
 
                 }}
 
                 bezier
 
-                style={{
-                    borderRadius: 20,
-                    marginTop: 20,
-                    marginBottom: 50,
-                }}
+                style={styles.chart}
 
             />
+
+            <View style={{ height: 100 }} />
 
         </ScrollView>
 
     );
+
 }
 
 const styles = StyleSheet.create({
 
     container: {
+
         flex: 1,
+
         backgroundColor: '#020617',
+
         padding: 20,
+
     },
 
     heading: {
+
         color: 'white',
+
         fontSize: 34,
+
         fontWeight: 'bold',
+
         marginTop: 50,
-        marginBottom: 30,
-    },
 
-    selectBox: {
-        marginBottom: 20,
-    },
+        marginBottom: 25,
 
-    selectLabel: {
-        color: '#94a3b8',
-        marginBottom: 10,
-        fontSize: 15,
-    },
-
-    dropdown: {
-        backgroundColor: '#1e293b',
-        padding: 16,
-        borderRadius: 15,
-    },
-
-    dropdownText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-
-    optionBox: {
-        backgroundColor: '#1e293b',
-        marginTop: 10,
-        borderRadius: 15,
-        padding: 10,
-    },
-
-    optionButton: {
-        padding: 14,
-        borderBottomWidth: 1,
-        borderBottomColor: '#334155',
-    },
-
-    optionText: {
-        color: 'white',
-        fontSize: 16,
-    },
-
-    card: {
-        backgroundColor: '#1e293b',
-        padding: 28,
-        borderRadius: 22,
-        marginTop: 10,
-        marginBottom: 20,
     },
 
     label: {
+
         color: '#94a3b8',
-        fontSize: 16,
+
+        fontSize: 13,
+
+        marginBottom: 8,
+
+        marginTop: 10,
+
     },
 
-    savings: {
-        color: '#22c55e',
-        fontSize: 44,
-        fontWeight: 'bold',
-        marginTop: 15,
+    input: {
+
+        backgroundColor: '#111827',
+
+        borderRadius: 14,
+
+        padding: 14,
+
+        color: 'white',
+
+        marginBottom: 15,
+
+        fontSize: 15,
+
     },
 
-    detailCard: {
-        backgroundColor: '#1e293b',
+    mainCard: {
+
+        backgroundColor: '#2563eb',
+
         padding: 25,
-        borderRadius: 22,
-        marginBottom: 30,
+
+        borderRadius: 24,
+
+        marginTop: 10,
+
     },
 
-    detailText: {
-        color: 'white',
-        fontSize: 18,
-        marginBottom: 14,
-    },
+    mainTitle: {
 
-    chartHeading: {
-        color: 'white',
-        fontSize: 24,
-        fontWeight: 'bold',
+        color: '#dbeafe',
+
+        fontSize: 15,
+
         marginBottom: 10,
+
+    },
+
+    mainAmount: {
+
+        color: 'white',
+
+        fontSize: 42,
+
+        fontWeight: 'bold',
+
+    },
+
+    row: {
+
+        flexDirection: 'row',
+
+        justifyContent: 'space-between',
+
+        marginTop: 18,
+
+    },
+
+    smallCard: {
+
+        width: '48%',
+
+        backgroundColor: '#111827',
+
+        padding: 18,
+
+        borderRadius: 18,
+
+    },
+
+    smallCardFull: {
+
+        backgroundColor: '#111827',
+
+        padding: 18,
+
+        borderRadius: 18,
+
+        marginTop: 15,
+
+    },
+
+    smallTitle: {
+
+        color: '#94a3b8',
+
+        fontSize: 13,
+
+        marginBottom: 10,
+
+    },
+
+    greenText: {
+
+        color: '#22c55e',
+
+        fontSize: 24,
+
+        fontWeight: 'bold',
+
+    },
+
+    blueText: {
+
+        color: '#3b82f6',
+
+        fontSize: 24,
+
+        fontWeight: 'bold',
+
+    },
+
+    redText: {
+
+        color: '#ef4444',
+
+        fontSize: 24,
+
+        fontWeight: 'bold',
+
+    },
+
+    graphTitle: {
+
+        color: 'white',
+
+        fontSize: 20,
+
+        fontWeight: 'bold',
+
+        marginTop: 30,
+
+        marginBottom: 15,
+
+    },
+
+    chart: {
+
+        borderRadius: 22,
+
     },
 
 });

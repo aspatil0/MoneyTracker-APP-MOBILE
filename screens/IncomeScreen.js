@@ -1,151 +1,95 @@
+import React, { useState } from 'react';
+
 import {
     View,
     Text,
     TextInput,
     TouchableOpacity,
     StyleSheet,
-    Platform,
+    ScrollView,
+    Alert,
 } from 'react-native';
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
-import { useState } from 'react';
 
-import AsyncStorage
-    from '@react-native-async-storage/async-storage';
-
-import DateTimePicker
-    from '@react-native-community/datetimepicker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function IncomeScreen({
     navigation,
 }) {
 
-    const today = new Date();
-
-    const [incomeAmount, setIncomeAmount] =
+    const [amount, setAmount] =
         useState('');
 
     const [mode, setMode] =
         useState('');
 
-    const [showDate, setShowDate] =
-        useState(false);
-
-    const [selectedDate, setSelectedDate] =
-        useState(today);
-
-    // FORMAT DATE
-
-    const formatDate = (date) => {
-
-        const year = date.getFullYear();
-
-        const month =
-            String(
-                date.getMonth() + 1
-            ).padStart(2, '0');
-
-        const day =
-            String(
-                date.getDate()
-            ).padStart(2, '0');
-
-        return `${year}-${month}-${day}`;
-
-    };
-
-    // SAVE INCOME
+    const [date, setDate] =
+        useState(
+            new Date()
+                .toISOString()
+                .split('T')[0]
+        );
 
     const saveIncome = async () => {
 
-        try {
+        if (
+            !amount ||
+            !mode ||
+            !date
+        ) {
 
-            if (
-                incomeAmount === '' ||
-                mode === ''
-            ) {
-
-                alert('Please fill all fields');
-
-                return;
-
-            }
-
-            // GET OLD INCOME
-
-            const oldIncome =
-                await AsyncStorage.getItem(
-                    'monthlyIncome'
-                );
-
-            const parsedOldIncome =
-                oldIncome
-                    ? Number(oldIncome)
-                    : 0;
-
-            // ADD NEW + OLD
-
-            const updatedIncome =
-
-                parsedOldIncome +
-
-                Number(incomeAmount);
-
-            // SAVE TOTAL
-
-            await AsyncStorage.setItem(
-
-                'monthlyIncome',
-
-                updatedIncome.toString()
-
+            Alert.alert(
+                'Please fill all fields'
             );
 
-            // GET OLD HISTORY
+            return;
 
-            const oldHistory =
-                await AsyncStorage.getItem(
-                    'incomeHistory'
-                );
+        }
 
-            let incomeHistory =
+        try {
 
-                oldHistory
-                    ? JSON.parse(oldHistory)
-                    : [];
+            const oldIncome =
 
-            // NEW ENTRY
+                JSON.parse(
 
-            const newIncome = {
+                    await AsyncStorage.getItem(
+                        'incomeHistory'
+                    )
+
+                ) || [];
+
+            const incomeData = {
 
                 id: Date.now(),
 
-                amount: incomeAmount,
+                amount: Number(amount),
 
-                date:
-                    formatDate(
-                        selectedDate
-                    ),
+                mode: mode,
 
-                mode,
+                date: date,
 
             };
 
-            incomeHistory.push(newIncome);
+            const updatedIncome = [
 
-            // SAVE HISTORY
+                incomeData,
+
+                ...oldIncome,
+
+            ];
 
             await AsyncStorage.setItem(
 
                 'incomeHistory',
 
                 JSON.stringify(
-                    incomeHistory
+                    updatedIncome
                 )
 
             );
 
-            alert('Income Added');
+            Alert.alert(
+                'Income Added Successfully'
+            );
 
             navigation.goBack();
 
@@ -155,19 +99,23 @@ export default function IncomeScreen({
 
             console.log(error);
 
+            Alert.alert(
+                'Error saving income'
+            );
+
         }
 
     };
 
     return (
 
-        <View style={styles.container}>
+        <ScrollView
+            style={styles.container}
+        >
 
             <Text style={styles.heading}>
                 Add Income
             </Text>
-
-            {/* AMOUNT */}
 
             <TextInput
 
@@ -175,82 +123,15 @@ export default function IncomeScreen({
 
                 placeholderTextColor="#94a3b8"
 
+                style={styles.input}
+
                 keyboardType="numeric"
 
-                value={incomeAmount}
+                value={amount}
 
-                onChangeText={setIncomeAmount}
+                onChangeText={setAmount}
 
-                style={styles.input}
             />
-
-            {/* DATE */}
-
-            <Text style={styles.label}>
-                Select Income Date
-            </Text>
-
-            <TouchableOpacity
-
-                style={styles.dateButton}
-
-                onPress={() =>
-                    setShowDate(true)
-                }
-
-            >
-
-                <Text style={styles.dateText}>
-
-                    {
-                        formatDate(
-                            selectedDate
-                        )
-                    }
-
-                </Text>
-
-            </TouchableOpacity>
-
-            {/* DATE PICKER */}
-
-            {
-                showDate && (
-
-                    <DateTimePicker
-
-                        value={selectedDate}
-
-                        mode="date"
-
-                        display={
-                            Platform.OS === 'ios'
-                                ? 'spinner'
-                                : 'default'
-                        }
-
-                        onChange={(
-                            event,
-                            pickedDate
-                        ) => {
-
-                            setShowDate(false);
-
-                            if (pickedDate) {
-
-                                setSelectedDate(
-                                    pickedDate
-                                );
-
-                            }
-
-                        }}
-                    />
-
-                )
-            }
-
-            {/* MODE */}
 
             <TextInput
 
@@ -258,18 +139,35 @@ export default function IncomeScreen({
 
                 placeholderTextColor="#94a3b8"
 
+                style={styles.input}
+
                 value={mode}
 
                 onChangeText={setMode}
 
-                style={styles.input}
             />
 
-            {/* BUTTON */}
+            <Text style={styles.label}>
+                Select Income Date
+            </Text>
+
+            <TextInput
+
+                value={date}
+
+                onChangeText={setDate}
+
+                placeholder="YYYY-MM-DD"
+
+                placeholderTextColor="#94a3b8"
+
+                style={styles.input}
+
+            />
 
             <TouchableOpacity
 
-                style={styles.button}
+                style={styles.saveButton}
 
                 onPress={saveIncome}
 
@@ -281,7 +179,7 @@ export default function IncomeScreen({
 
             </TouchableOpacity>
 
-        </View>
+        </ScrollView>
 
     );
 
@@ -290,58 +188,75 @@ export default function IncomeScreen({
 const styles = StyleSheet.create({
 
     container: {
+
         flex: 1,
-        backgroundColor: '#020617',
+
+        backgroundColor: '#020B2D',
+
         padding: 20,
+
     },
 
     heading: {
-        color: 'white',
-        fontSize: 32,
+
+        color: '#fff',
+
+        fontSize: 28,
+
         fontWeight: 'bold',
-        marginTop: 50,
-        marginBottom: 35,
+
+        marginTop: 60,
+
+        marginBottom: 30,
+
     },
 
     input: {
-        backgroundColor: '#1e293b',
-        color: 'white',
-        padding: 18,
-        borderRadius: 15,
-        marginBottom: 22,
-        fontSize: 16,
+
+        backgroundColor: '#1c2942',
+
+        borderRadius: 12,
+
+        padding: 16,
+
+        color: '#fff',
+
+        marginBottom: 18,
+
     },
 
     label: {
-        color: '#94a3b8',
+
+        color: '#fff',
+
         marginBottom: 10,
-        fontSize: 15,
+
+        fontWeight: '600',
+
     },
 
-    dateButton: {
-        backgroundColor: '#1e293b',
-        padding: 18,
-        borderRadius: 15,
-        marginBottom: 25,
-    },
+    saveButton: {
 
-    dateText: {
-        color: 'white',
-        fontSize: 16,
-    },
-
-    button: {
         backgroundColor: '#16a34a',
-        padding: 18,
-        borderRadius: 15,
+
+        padding: 16,
+
+        borderRadius: 12,
+
+        alignItems: 'center',
+
         marginTop: 10,
+
     },
 
     buttonText: {
-        color: 'white',
-        textAlign: 'center',
+
+        color: '#fff',
+
         fontWeight: 'bold',
-        fontSize: 17,
+
+        fontSize: 16,
+
     },
 
 });

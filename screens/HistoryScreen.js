@@ -1,380 +1,593 @@
-import React, { useEffect, useState } from 'react';
+// screens/HistoryScreen.js
+
+import React, {
+    useEffect,
+    useState,
+} from 'react';
+
 import {
     View,
     Text,
     StyleSheet,
     ScrollView,
     TouchableOpacity,
+    TextInput,
+    Alert,
 } from 'react-native';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function HistoryScreen() {
 
-    const todayDate = new Date().toISOString().split('T')[0];
+    const [transactions, setTransactions] =
+        useState([]);
 
-    const [selectedDate, setSelectedDate] = useState(todayDate);
-
-    const [transactions, setTransactions] = useState([]);
-    const [creditTotal, setCreditTotal] = useState(0);
-    const [debitTotal, setDebitTotal] = useState(0);
-
-    const [showPicker, setShowPicker] = useState(false);
-
-    useEffect(() => {
-        loadHistory(selectedDate);
-    }, [selectedDate]);
-
-    const loadHistory = async (date) => {
-
-        const storedTransactions =
-            JSON.parse(
-                await AsyncStorage.getItem('transactions')
-            ) || [];
-
-        const storedIncome =
-            JSON.parse(
-                await AsyncStorage.getItem('incomeHistory')
-            ) || [];
-
-        const allData = [];
-
-        storedTransactions.forEach((item) => {
-            allData.push({
-                ...item,
-                category: 'transaction',
-            });
-        });
-
-        storedIncome.forEach((item) => {
-            allData.push({
-                ...item,
-                type: 'income',
-                title: item.mode,
-                category: 'income',
-            });
-        });
-
-        const filteredData = allData.filter(
-            (item) => item.date === date
+    const [selectedDate, setSelectedDate] =
+        useState(
+            new Date()
+                .toISOString()
+                .split('T')[0]
         );
 
-        setTransactions(filteredData.reverse());
+    const loadHistory = async () => {
 
-        let credit = 0;
-        let debit = 0;
+        try {
 
-        filteredData.forEach((item) => {
+            const storedTransactions =
 
-            if (
-                item.type === 'credited' ||
-                item.type === 'income'
-            ) {
-                credit += Number(item.amount);
-            }
+                JSON.parse(
 
-            if (item.type === 'debited') {
-                debit += Number(item.amount);
-            }
-        });
+                    await AsyncStorage.getItem(
+                        'transactions'
+                    )
 
-        setCreditTotal(credit);
-        setDebitTotal(debit);
-    };
+                ) || [];
 
-    const generateDates = () => {
+            const incomeHistory =
 
-        const dates = [];
+                JSON.parse(
 
-        for (let i = 0; i < 30; i++) {
+                    await AsyncStorage.getItem(
+                        'incomeHistory'
+                    )
 
-            const d = new Date();
+                ) || [];
 
-            d.setDate(d.getDate() - i);
+            // INCOME DATA FORMAT
 
-            dates.push(
-                d.toISOString().split('T')[0]
+            const formattedIncome =
+
+                incomeHistory.map((item) => ({
+
+                    id: item.id,
+
+                    title: 'Income Added',
+
+                    amount: item.amount,
+
+                    type: 'credited',
+
+                    date: item.date,
+
+                    mode: item.mode,
+
+                }));
+
+            // MERGE
+
+            const allData = [
+
+                ...storedTransactions,
+
+                ...formattedIncome,
+
+            ];
+
+            // FILTER DATE
+
+            const filteredData =
+
+                allData.filter(
+
+                    (item) =>
+
+                        item.date ===
+                        selectedDate
+
+                );
+
+            // SORT NEWEST
+
+            filteredData.sort(
+                (a, b) => b.id - a.id
             );
+
+            setTransactions(
+                filteredData
+            );
+
         }
 
-        return dates;
+        catch (error) {
+
+            console.log(error);
+
+        }
+
     };
 
+    useEffect(() => {
+
+        loadHistory();
+
+    }, [selectedDate]);
+
+    // REFRESH
+
+    const refreshHistory = async () => {
+
+        loadHistory();
+
+    };
+
+    // CLEAR HISTORY
+
+    const clearHistory = async () => {
+
+        Alert.alert(
+
+            'Clear History',
+
+            'Delete all transaction history?',
+
+            [
+
+                {
+                    text: 'Cancel',
+                    style: 'cancel',
+                },
+
+                {
+
+                    text: 'Yes',
+
+                    onPress: async () => {
+
+                        try {
+
+                            await AsyncStorage.removeItem(
+                                'transactions'
+                            );
+
+                            setTransactions([]);
+
+                            Alert.alert(
+                                'History Cleared'
+                            );
+
+                        }
+
+                        catch (error) {
+
+                            console.log(error);
+
+                        }
+
+                    },
+
+                },
+
+            ]
+
+        );
+
+    };
+
+    // TOTALS
+
+    let totalCredit = 0;
+    let totalDebit = 0;
+
+    transactions.forEach((item) => {
+
+        if (
+            item.type === 'credited'
+        ) {
+
+            totalCredit +=
+                Number(item.amount);
+
+        }
+
+        else {
+
+            totalDebit +=
+                Number(item.amount);
+
+        }
+
+    });
+
     return (
-        <ScrollView style={styles.container}>
+
+        <ScrollView
+            style={styles.container}
+        >
+
+            {/* HEADING */}
 
             <Text style={styles.heading}>
                 History
             </Text>
 
-            <Text style={styles.subHeading}>
-                Select date to check transaction history
-            </Text>
+            {/* BUTTONS */}
 
-            <TouchableOpacity
-                style={styles.dateButton}
-                onPress={() =>
-                    setShowPicker(!showPicker)
-                }
-            >
-                <Text style={styles.dateText}>
-                    {selectedDate}
-                </Text>
-            </TouchableOpacity>
+            <View style={styles.topButtons}>
 
-            {
-                showPicker && (
-                    <View style={styles.datePickerBox}>
+                <TouchableOpacity
 
-                        <ScrollView
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                        >
+                    style={styles.refreshButton}
 
-                            {
-                                generateDates().map(
-                                    (date, index) => (
+                    onPress={refreshHistory}
 
-                                        <TouchableOpacity
-                                            key={index}
-                                            style={
-                                                selectedDate === date
-                                                    ? styles.activeDate
-                                                    : styles.normalDate
-                                            }
-                                            onPress={() => {
-                                                setSelectedDate(date);
-                                                setShowPicker(false);
-                                            }}
-                                        >
+                >
 
-                                            <Text
-                                                style={styles.dateItemText}
-                                            >
-                                                {date}
-                                            </Text>
+                    <Text style={styles.buttonText}>
+                        Refresh
+                    </Text>
 
-                                        </TouchableOpacity>
-                                    )
-                                )
-                            }
+                </TouchableOpacity>
 
-                        </ScrollView>
+                <TouchableOpacity
 
-                    </View>
-                )
-            }
+                    style={styles.clearButton}
 
-            <View style={styles.summaryCard}>
+                    onPress={clearHistory}
 
-                <Text style={styles.credit}>
-                    Credit : ₹ {creditTotal}
-                </Text>
+                >
 
-                <Text style={styles.debit}>
-                    Debit : ₹ {debitTotal}
-                </Text>
+                    <Text style={styles.buttonText}>
+                        Clear History
+                    </Text>
+
+                </TouchableOpacity>
 
             </View>
 
+            {/* DATE */}
+
+            <Text style={styles.label}>
+                Please Select Date To Check
+                Transaction History
+            </Text>
+
+            <TextInput
+
+                value={selectedDate}
+
+                onChangeText={
+                    setSelectedDate
+                }
+
+                placeholder="YYYY-MM-DD"
+
+                placeholderTextColor="#94a3b8"
+
+                style={styles.input}
+
+            />
+
+            {/* TOTALS */}
+
+            <View style={styles.totalRow}>
+
+                <View style={styles.totalCard}>
+
+                    <Text style={styles.smallTitle}>
+                        Credited
+                    </Text>
+
+                    <Text style={styles.creditText}>
+                        ₹ {totalCredit}
+                    </Text>
+
+                </View>
+
+                <View style={styles.totalCard}>
+
+                    <Text style={styles.smallTitle}>
+                        Debited
+                    </Text>
+
+                    <Text style={styles.debitText}>
+                        ₹ {totalDebit}
+                    </Text>
+
+                </View>
+
+            </View>
+
+            {/* NO DATA */}
+
             {
-                transactions.length === 0 ? (
+                transactions.length === 0 && (
 
-                    <View style={styles.emptyBox}>
+                    <Text style={styles.noData}>
+                        No Money Activity On
+                        This Date
+                    </Text>
 
-                        <Text style={styles.emptyText}>
-                            No money activity found
-                        </Text>
+                )
+            }
 
-                    </View>
+            {/* HISTORY */}
 
-                ) : (
-
-                    transactions.map((item, index) => (
+            {
+                transactions.map(
+                    (item, index) => (
 
                         <View
                             key={index}
-                            style={styles.historyCard}
+                            style={styles.card}
                         >
 
                             <View>
 
                                 <Text style={styles.title}>
-                                    {
-                                        item.title ||
-                                        item.mode
-                                    }
+                                    {item.title}
                                 </Text>
 
-                                <Text style={styles.typeText}>
-
-                                    {
-                                        item.type === 'credited'
-                                            ? 'Credit'
-
-                                            : item.type === 'debited'
-                                                ? 'Debit'
-
-                                                : 'Income'
-                                    }
-
+                                <Text style={styles.date}>
+                                    {item.date}
                                 </Text>
 
                             </View>
 
                             <Text
+
                                 style={
-                                    item.type === 'debited'
-                                        ? styles.debitAmount
-                                        : styles.creditAmount
+
+                                    item.type ===
+                                        'credited'
+
+                                        ? styles.creditAmount
+
+                                        : styles.debitAmount
+
                                 }
+
                             >
 
-                                {
-                                    item.type === 'debited'
-                                        ? '-₹ '
-
-                                        : '+₹ '
-                                }
-
-                                {item.amount}
+                                ₹ {item.amount}
 
                             </Text>
 
                         </View>
-                    ))
+
+                    )
                 )
             }
 
             <View style={{ height: 100 }} />
 
         </ScrollView>
+
     );
+
 }
 
 const styles = StyleSheet.create({
 
     container: {
+
         flex: 1,
+
         backgroundColor: '#020617',
+
         padding: 20,
+
     },
 
     heading: {
+
         color: 'white',
-        fontSize: 36,
+
+        fontSize: 34,
+
         fontWeight: 'bold',
+
         marginTop: 50,
-    },
 
-    subHeading: {
-        color: '#94a3b8',
-        marginTop: 10,
         marginBottom: 20,
+
     },
 
-    dateButton: {
-        backgroundColor: '#2563eb',
-        padding: 16,
-        borderRadius: 14,
-        alignItems: 'center',
-    },
+    topButtons: {
 
-    dateText: {
-        color: 'white',
-        fontWeight: 'bold',
-    },
-
-    datePickerBox: {
-        marginTop: 15,
-        marginBottom: 10,
-    },
-
-    normalDate: {
-        backgroundColor: '#1e293b',
-        paddingVertical: 10,
-        paddingHorizontal: 14,
-        borderRadius: 12,
-        marginRight: 10,
-    },
-
-    activeDate: {
-        backgroundColor: '#2563eb',
-        paddingVertical: 10,
-        paddingHorizontal: 14,
-        borderRadius: 12,
-        marginRight: 10,
-    },
-
-    dateItemText: {
-        color: 'white',
-        fontSize: 12,
-    },
-
-    summaryCard: {
-        backgroundColor: '#1e293b',
-        padding: 18,
-        borderRadius: 18,
-        marginTop: 20,
-    },
-
-    credit: {
-        color: '#22c55e',
-        fontSize: 22,
-        fontWeight: 'bold',
-        marginBottom: 10,
-    },
-
-    debit: {
-        color: '#ef4444',
-        fontSize: 22,
-        fontWeight: 'bold',
-    },
-
-    historyCard: {
-        backgroundColor: '#1e293b',
-        marginTop: 15,
-        borderRadius: 18,
-        padding: 18,
         flexDirection: 'row',
+
         justifyContent: 'space-between',
+
+        marginBottom: 20,
+
+    },
+
+    refreshButton: {
+
+        backgroundColor: '#2563eb',
+
+        padding: 12,
+
+        borderRadius: 12,
+
+        width: '48%',
+
         alignItems: 'center',
+
+    },
+
+    clearButton: {
+
+        backgroundColor: '#dc2626',
+
+        padding: 12,
+
+        borderRadius: 12,
+
+        width: '48%',
+
+        alignItems: 'center',
+
+    },
+
+    buttonText: {
+
+        color: 'white',
+
+        fontWeight: 'bold',
+
+    },
+
+    label: {
+
+        color: '#cbd5e1',
+
+        marginBottom: 10,
+
+        fontSize: 14,
+
+    },
+
+    input: {
+
+        backgroundColor: '#1e293b',
+
+        borderRadius: 12,
+
+        padding: 15,
+
+        color: 'white',
+
+        marginBottom: 20,
+
+    },
+
+    totalRow: {
+
+        flexDirection: 'row',
+
+        justifyContent: 'space-between',
+
+        marginBottom: 25,
+
+    },
+
+    totalCard: {
+
+        width: '48%',
+
+        backgroundColor: '#1e293b',
+
+        padding: 15,
+
+        borderRadius: 15,
+
+    },
+
+    smallTitle: {
+
+        color: '#94a3b8',
+
+        marginBottom: 10,
+
+    },
+
+    creditText: {
+
+        color: '#22c55e',
+
+        fontSize: 24,
+
+        fontWeight: 'bold',
+
+    },
+
+    debitText: {
+
+        color: '#ef4444',
+
+        fontSize: 24,
+
+        fontWeight: 'bold',
+
+    },
+
+    noData: {
+
+        color: '#94a3b8',
+
+        textAlign: 'center',
+
+        marginTop: 50,
+
+        fontSize: 16,
+
+    },
+
+    card: {
+
+        backgroundColor: '#1e293b',
+
+        padding: 18,
+
+        borderRadius: 15,
+
+        marginBottom: 15,
+
+        flexDirection: 'row',
+
+        justifyContent: 'space-between',
+
+        alignItems: 'center',
+
     },
 
     title: {
+
         color: 'white',
+
         fontSize: 18,
+
         fontWeight: 'bold',
+
     },
 
-    typeText: {
+    date: {
+
         color: '#94a3b8',
+
         marginTop: 5,
+
     },
 
     creditAmount: {
+
         color: '#22c55e',
+
         fontSize: 20,
+
         fontWeight: 'bold',
+
     },
 
     debitAmount: {
+
         color: '#ef4444',
+
         fontSize: 20,
+
         fontWeight: 'bold',
-    },
 
-    emptyBox: {
-        backgroundColor: '#1e293b',
-        padding: 25,
-        borderRadius: 18,
-        marginTop: 20,
-        alignItems: 'center',
-    },
-
-    emptyText: {
-        color: '#94a3b8',
-        fontSize: 16,
     },
 
 });
