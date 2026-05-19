@@ -1,5 +1,3 @@
-// screens/AddTransactionScreen.js
-
 import React, { useState } from 'react';
 
 import {
@@ -14,37 +12,36 @@ import {
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import DatePicker from 'react-datepicker';
+export default function AddTransactionScreen({
+    navigation,
+}) {
 
-import 'react-datepicker/dist/react-datepicker.css';
+    const [title, setTitle] =
+        useState('');
 
-const AddTransactionScreen = ({ navigation }) => {
+    const [amount, setAmount] =
+        useState('');
 
-    const [itemName, setItemName] = useState('');
+    const [type, setType] =
+        useState('credited');
 
-    const [amount, setAmount] = useState('');
-
-    const [type, setType] = useState('credit');
-
-    const [selectedDate, setSelectedDate] =
-        useState(new Date());
-
-    const formatDate = (date) => {
-
-        return `${date.getFullYear()}-${String(
-            date.getMonth() + 1
-        ).padStart(2, '0')}-${String(
-            date.getDate()
-        ).padStart(2, '0')}`;
-
-    };
+    const [date, setDate] =
+        useState(
+            new Date()
+                .toISOString()
+                .split('T')[0]
+        );
 
     const saveTransaction = async () => {
 
-        if (!itemName || !amount) {
+        if (
+            !title ||
+            !amount ||
+            !date
+        ) {
 
             Alert.alert(
-                'Please enter all fields'
+                'Please fill all fields'
             );
 
             return;
@@ -53,7 +50,7 @@ const AddTransactionScreen = ({ navigation }) => {
 
         try {
 
-            const existingTransactions =
+            const oldTransactions =
 
                 JSON.parse(
 
@@ -63,32 +60,17 @@ const AddTransactionScreen = ({ navigation }) => {
 
                 ) || [];
 
-            const currentBalance =
-
-                Number(
-
-                    await AsyncStorage.getItem(
-                        'currentBalance'
-                    )
-
-                ) || 0;
-
-            const transactionAmount =
-                Number(amount);
-
             const newTransaction = {
 
                 id: Date.now(),
 
-                title: itemName,
+                title: title,
 
-                amount: transactionAmount,
+                amount: Number(amount),
 
                 type: type,
 
-                date: formatDate(
-                    selectedDate
-                ),
+                date: date,
 
             };
 
@@ -96,7 +78,7 @@ const AddTransactionScreen = ({ navigation }) => {
 
                 newTransaction,
 
-                ...existingTransactions,
+                ...oldTransactions,
 
             ];
 
@@ -110,35 +92,8 @@ const AddTransactionScreen = ({ navigation }) => {
 
             );
 
-            let updatedBalance =
-                currentBalance;
-
-            if (type === 'credit') {
-
-                updatedBalance =
-                    currentBalance +
-                    transactionAmount;
-
-            }
-
-            else {
-
-                updatedBalance =
-                    currentBalance -
-                    transactionAmount;
-
-            }
-
-            await AsyncStorage.setItem(
-
-                'currentBalance',
-
-                updatedBalance.toString()
-
-            );
-
             Alert.alert(
-                'Transaction Saved Successfully'
+                'Transaction Added Successfully'
             );
 
             navigation.goBack();
@@ -160,40 +115,36 @@ const AddTransactionScreen = ({ navigation }) => {
     return (
 
         <ScrollView
-
             style={styles.container}
-
-            contentContainerStyle={{
-                paddingBottom: 400,
-            }}
-
-            keyboardShouldPersistTaps="handled"
-
         >
 
             <Text style={styles.heading}>
                 Add Transaction
             </Text>
 
+            {/* TITLE */}
+
             <TextInput
 
                 placeholder="Enter Item Name"
 
-                placeholderTextColor="#8f9bb3"
+                placeholderTextColor="#94a3b8"
 
                 style={styles.input}
 
-                value={itemName}
+                value={title}
 
-                onChangeText={setItemName}
+                onChangeText={setTitle}
 
             />
+
+            {/* AMOUNT */}
 
             <TextInput
 
                 placeholder="Enter Amount"
 
-                placeholderTextColor="#8f9bb3"
+                placeholderTextColor="#94a3b8"
 
                 style={styles.input}
 
@@ -205,42 +156,27 @@ const AddTransactionScreen = ({ navigation }) => {
 
             />
 
+            {/* DATE */}
+
             <Text style={styles.label}>
                 Select Transaction Date
             </Text>
 
-            <View style={styles.dateContainer}>
+            <TextInput
 
-                <DatePicker
+                value={date}
 
-                    selected={selectedDate}
+                onChangeText={setDate}
 
-                    onChange={(date) => {
+                placeholder="YYYY-MM-DD"
 
-                        setSelectedDate(date);
+                placeholderTextColor="#94a3b8"
 
-                        if (
-                            document &&
-                            document.activeElement
-                        ) {
+                style={styles.input}
 
-                            document.activeElement.blur();
+            />
 
-                        }
-
-                    }}
-
-                    dateFormat="yyyy-MM-dd"
-
-                    popperPlacement="top-start"
-
-                    wrapperClassName="datePicker"
-
-                    className="custom-datepicker"
-
-                />
-
-            </View>
+            {/* CREDIT */}
 
             <TouchableOpacity
 
@@ -248,13 +184,13 @@ const AddTransactionScreen = ({ navigation }) => {
 
                     styles.typeButton,
 
-                    type === 'credit' &&
+                    type === 'credited' &&
                     styles.creditButton,
 
                 ]}
 
                 onPress={() =>
-                    setType('credit')
+                    setType('credited')
                 }
 
             >
@@ -265,19 +201,21 @@ const AddTransactionScreen = ({ navigation }) => {
 
             </TouchableOpacity>
 
+            {/* DEBIT */}
+
             <TouchableOpacity
 
                 style={[
 
                     styles.typeButton,
 
-                    type === 'debit' &&
+                    type === 'debited' &&
                     styles.debitButton,
 
                 ]}
 
                 onPress={() =>
-                    setType('debit')
+                    setType('debited')
                 }
 
             >
@@ -287,6 +225,8 @@ const AddTransactionScreen = ({ navigation }) => {
                 </Text>
 
             </TouchableOpacity>
+
+            {/* SAVE */}
 
             <TouchableOpacity
 
@@ -302,13 +242,13 @@ const AddTransactionScreen = ({ navigation }) => {
 
             </TouchableOpacity>
 
+            <View style={{ height: 100 }} />
+
         </ScrollView>
 
     );
 
-};
-
-export default AddTransactionScreen;
+}
 
 const styles = StyleSheet.create({
 
@@ -326,7 +266,7 @@ const styles = StyleSheet.create({
 
         color: '#fff',
 
-        fontSize: 24,
+        fontSize: 28,
 
         fontWeight: 'bold',
 
@@ -357,14 +297,6 @@ const styles = StyleSheet.create({
         marginBottom: 10,
 
         fontWeight: '600',
-
-    },
-
-    dateContainer: {
-
-        zIndex: 99999,
-
-        marginBottom: 20,
 
     },
 
@@ -413,6 +345,8 @@ const styles = StyleSheet.create({
         color: '#fff',
 
         fontWeight: 'bold',
+
+        fontSize: 16,
 
     },
 
