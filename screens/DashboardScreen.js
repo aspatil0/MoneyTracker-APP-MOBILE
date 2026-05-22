@@ -1,804 +1,705 @@
-// screens/DashboardScreen.js
-
-import React, {
-    useEffect,
-    useState,
-} from 'react';
+import { useEffect, useState } from "react";
 
 import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    ScrollView,
-    Alert,
-} from 'react-native';
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export default function DashboardScreen({
-    navigation,
-}) {
+import Ionicons from "react-native-vector-icons/Ionicons";
 
-    const [monthlyIncome, setMonthlyIncome] =
-        useState(0);
+export default function DashboardScreen({ navigation }) {
+  const [monthlyIncome, setMonthlyIncome] = useState(0);
 
-    const [todayCredit, setTodayCredit] =
-        useState(0);
+  const [todayCredit, setTodayCredit] = useState(0);
 
-    const [todayDebit, setTodayDebit] =
-        useState(0);
+  const [todayDebit, setTodayDebit] = useState(0);
 
-    const [currentBalance, setCurrentBalance] =
-        useState(0);
+  const [currentBalance, setCurrentBalance] = useState(0);
 
-    const [incomeHistory, setIncomeHistory] =
-        useState([]);
+  const [incomeHistory, setIncomeHistory] = useState([]);
 
-    const loadData = async () => {
+  const [showIncome, setShowIncome] = useState(true);
 
-        try {
+  const [banks, setBanks] = useState([]);
 
-            const currentDate =
-                new Date();
+  const [selectedBank, setSelectedBank] = useState(null);
 
-            const currentMonth =
-                String(
-                    currentDate.getMonth() + 1
-                ).padStart(2, '0');
+  const [showBankList, setShowBankList] = useState(false);
 
-            const currentYear =
-                currentDate
-                    .getFullYear()
-                    .toString();
+  const [showBankModal, setShowBankModal] = useState(false);
 
-            const today =
-                currentDate
-                    .toISOString()
-                    .split('T')[0];
+  const [bankName, setBankName] = useState("");
 
-            // INCOME HISTORY
+  const [bankAmount, setBankAmount] = useState("");
 
-            const incomes =
+  const loadBanks = async () => {
+    const savedBanks = JSON.parse(await AsyncStorage.getItem("banks")) || [];
 
-                JSON.parse(
+    const activeBank = JSON.parse(await AsyncStorage.getItem("selectedBank"));
 
-                    await AsyncStorage.getItem(
-                        'incomeHistory'
-                    )
+    setBanks(savedBanks);
 
-                ) || [];
+    if (activeBank) {
+      setSelectedBank(activeBank);
 
-            // FILTER CURRENT MONTH INCOME
+      setCurrentBalance(activeBank.balance);
+    }
+  };
 
-            const currentMonthIncome =
+  const saveBank = async () => {
+    if (!bankName || !bankAmount) {
+      Alert.alert("Fill all fields");
 
-                incomes.filter((item) => {
+      return;
+    }
 
-                    const splitDate =
-                        item.date.split('-');
+    const newBank = {
+      id: Date.now(),
 
-                    return (
+      name: bankName,
 
-                        splitDate[0] ===
-                        currentYear &&
-
-                        splitDate[1] ===
-                        currentMonth
-
-                    );
-
-                });
-
-            setIncomeHistory(
-                currentMonthIncome
-            );
-
-            let totalIncome = 0;
-
-            currentMonthIncome.forEach(
-                (item) => {
-
-                    totalIncome +=
-                        Number(
-                            item.amount
-                        );
-
-                }
-            );
-
-            setMonthlyIncome(totalIncome);
-
-            // TRANSACTIONS
-
-            const transactions =
-
-                JSON.parse(
-
-                    await AsyncStorage.getItem(
-                        'transactions'
-                    )
-
-                ) || [];
-
-            let todayCreditAmount = 0;
-
-            let todayDebitAmount = 0;
-
-            let totalCredit = 0;
-
-            let totalDebit = 0;
-
-            transactions.forEach((item) => {
-
-                const splitDate =
-                    item.date.split('-');
-
-                const itemYear =
-                    splitDate[0];
-
-                const itemMonth =
-                    splitDate[1];
-
-                // CURRENT MONTH ONLY
-
-                if (
-
-                    itemYear ===
-                    currentYear &&
-
-                    itemMonth ===
-                    currentMonth
-
-                ) {
-
-                    // TODAY DATA
-
-                    if (
-                        item.date === today
-                    ) {
-
-                        if (
-                            item.type ===
-                            'credited'
-                        ) {
-
-                            todayCreditAmount +=
-                                Number(
-                                    item.amount
-                                );
-
-                        }
-
-                        if (
-                            item.type ===
-                            'debited'
-                        ) {
-
-                            todayDebitAmount +=
-                                Number(
-                                    item.amount
-                                );
-
-                        }
-
-                    }
-
-                    // MONTH TOTAL
-
-                    if (
-                        item.type ===
-                        'credited'
-                    ) {
-
-                        totalCredit +=
-                            Number(
-                                item.amount
-                            );
-
-                    }
-
-                    if (
-                        item.type ===
-                        'debited'
-                    ) {
-
-                        totalDebit +=
-                            Number(
-                                item.amount
-                            );
-
-                    }
-
-                }
-
-            });
-
-            setTodayCredit(
-                todayCreditAmount
-            );
-
-            setTodayDebit(
-                todayDebitAmount
-            );
-
-            // CURRENT MONTH BALANCE
-
-            const balance =
-
-                totalIncome +
-
-                totalCredit -
-
-                totalDebit;
-
-            setCurrentBalance(balance);
-
-        }
-
-        catch (error) {
-
-            console.log(error);
-
-        }
-
+      balance: Number(bankAmount),
     };
 
-    useEffect(() => {
+    const updatedBanks = [...banks, newBank];
 
-        const unsubscribe =
-            navigation.addListener(
-                'focus',
-                loadData
-            );
+    setBanks(updatedBanks);
 
-        return unsubscribe;
+    await AsyncStorage.setItem(
+      "banks",
 
-    }, []);
-
-    // CLEAR DATA
-
-    const clearAllData = async () => {
-
-        Alert.alert(
-
-            'Clear All Data',
-
-            'Delete all money history?',
-
-            [
-
-                {
-                    text: 'Cancel',
-                    style: 'cancel',
-                },
-
-                {
-
-                    text: 'Yes',
-
-                    onPress: async () => {
-
-                        try {
-
-                            await AsyncStorage.removeItem(
-                                'transactions'
-                            );
-
-                            await AsyncStorage.removeItem(
-                                'incomeHistory'
-                            );
-
-                            setMonthlyIncome(0);
-
-                            setTodayCredit(0);
-
-                            setTodayDebit(0);
-
-                            setCurrentBalance(0);
-
-                            setIncomeHistory([]);
-
-                            Alert.alert(
-                                'All Data Cleared'
-                            );
-
-                        }
-
-                        catch (error) {
-
-                            console.log(error);
-
-                        }
-
-                    },
-
-                },
-
-            ]
-
-        );
-
-    };
-
-    return (
-
-        <ScrollView
-            style={styles.container}
-        >
-
-            {/* TITLE */}
-
-            <Text style={styles.heading}>
-                Money Manager
-            </Text>
-
-            {/* DATE */}
-
-            <Text style={styles.dateText}>
-
-                {
-                    new Date().toLocaleDateString(
-                        'en-IN',
-                        {
-                            weekday: 'long',
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric',
-                        }
-                    )
-                }
-
-            </Text>
-
-            {/* NAME */}
-
-            <View style={styles.nameRow}>
-
-                <Text style={styles.subHeading}>
-                    By Adityaraj Patil
-                </Text>
-
-                <TouchableOpacity
-                    onPress={clearAllData}
-                    style={styles.clearIcon}
-                >
-
-                    <Text style={styles.clearIconText}>
-                        🗑
-                    </Text>
-
-                </TouchableOpacity>
-
-            </View>
-
-            {/* TODAY */}
-
-            <View style={styles.row}>
-
-                <View style={styles.smallCard}>
-
-                    <Text style={styles.smallTitle}>
-                        Today Credited
-                    </Text>
-
-                    <Text style={styles.creditText}>
-                        ₹ {todayCredit}
-                    </Text>
-
-                </View>
-
-                <View style={styles.smallCard}>
-
-                    <Text style={styles.smallTitle}>
-                        Today Debited
-                    </Text>
-
-                    <Text style={styles.debitText}>
-                        ₹ {todayDebit}
-                    </Text>
-
-                </View>
-
-            </View>
-
-            {/* CURRENT BALANCE */}
-
-            <View style={styles.balanceCard}>
-
-                <Text style={styles.balanceTitle}>
-                    Current Month Balance
-                </Text>
-
-                <Text style={styles.balanceAmount}>
-                    ₹ {currentBalance}
-                </Text>
-
-            </View>
-
-            {/* MONTHLY INCOME */}
-
-            <View style={styles.balanceCard}>
-
-                <Text style={styles.balanceTitle}>
-                    Current Month Income
-                </Text>
-
-                <Text style={styles.creditText}>
-                    ₹ {monthlyIncome}
-                </Text>
-
-            </View>
-
-            {/* BUTTONS */}
-
-            <TouchableOpacity
-
-                style={styles.incomeButton}
-
-                onPress={() =>
-                    navigation.navigate(
-                        'AddIncome'
-                    )
-                }
-
-            >
-
-                <Text style={styles.buttonText}>
-                    Add Income
-                </Text>
-
-            </TouchableOpacity>
-
-            <TouchableOpacity
-
-                style={styles.transactionButton}
-
-                onPress={() =>
-                    navigation.navigate(
-                        'AddTransaction'
-                    )
-                }
-
-            >
-
-                <Text style={styles.buttonText}>
-                    Add Transaction
-                </Text>
-
-            </TouchableOpacity>
-
-            {/* INCOME HISTORY */}
-
-            <View style={styles.historyHeader}>
-
-                <Text style={styles.historyTitle}>
-                    Current Month Income
-                </Text>
-
-                <TouchableOpacity
-                    onPress={() =>
-                        navigation.navigate(
-                            'History'
-                        )
-                    }
-                >
-
-                    <Text style={styles.fullHistory}>
-                        See Full History
-                    </Text>
-
-                </TouchableOpacity>
-
-            </View>
-
-            {
-                incomeHistory
-
-                    .slice(0, 3)
-
-                    .reverse()
-
-                    .map((item, index) => (
-
-                        <View
-                            key={index}
-                            style={styles.historyCard}
-                        >
-
-                            <View>
-
-                                <Text style={styles.historyAmount}>
-                                    ₹ {item.amount}
-                                </Text>
-
-                                <Text style={styles.historyDate}>
-                                    {item.date}
-                                </Text>
-
-                            </View>
-
-                            <Text style={styles.historyMode}>
-                                {item.mode}
-                            </Text>
-
-                        </View>
-
-                    ))
-            }
-
-            <View style={{ height: 100 }} />
-
-        </ScrollView>
-
+      JSON.stringify(updatedBanks),
     );
 
+    if (!selectedBank) {
+      setSelectedBank(newBank);
+
+      await AsyncStorage.setItem(
+        "selectedBank",
+
+        JSON.stringify(newBank),
+      );
+    }
+
+    setBankName("");
+
+    setBankAmount("");
+
+    setShowBankModal(false);
+  };
+
+  const selectBank = async (bank) => {
+    setSelectedBank(bank);
+
+    setCurrentBalance(bank.balance);
+
+    setShowBankList(false);
+
+    await AsyncStorage.setItem(
+      "selectedBank",
+
+      JSON.stringify(bank),
+    );
+  };
+  // REPLACE ONLY loadData FUNCTION
+  // inside DashboardScreen.js
+
+  const loadData = async () => {
+    try {
+      const currentDate = new Date();
+
+      const currentMonth = String(currentDate.getMonth() + 1).padStart(2, "0");
+
+      const currentYear = currentDate.getFullYear().toString();
+
+      const today = currentDate.toISOString().split("T")[0];
+
+      // RESET VALUES
+
+      let todayCreditAmount = 0;
+
+      let todayDebitAmount = 0;
+
+      let totalIncome = 0;
+
+      // LOAD INCOME
+
+      const incomes =
+        JSON.parse(await AsyncStorage.getItem("incomeHistory")) || [];
+
+      // LOAD TRANSACTIONS
+
+      const transactions =
+        JSON.parse(await AsyncStorage.getItem("transactions")) || [];
+
+      // FILTER ACTIVE BANK INCOME
+
+      const filteredIncome = incomes.filter((item) => {
+        const splitDate = item.date.split("-");
+
+        return (
+          splitDate[0] === currentYear &&
+          splitDate[1] === currentMonth &&
+          item.bankName === selectedBank?.name
+        );
+      });
+
+      setIncomeHistory(filteredIncome);
+
+      // TOTAL MONTHLY INCOME
+
+      filteredIncome.forEach((item) => {
+        totalIncome += Number(item.amount);
+      });
+
+      setMonthlyIncome(totalIncome);
+
+      // TRANSACTION LOOP
+
+      transactions.forEach((item) => {
+        const splitDate = item.date.split("-");
+
+        const itemYear = splitDate[0];
+
+        const itemMonth = splitDate[1];
+
+        // FILTER ACTIVE BANK
+
+        if (
+          item.bankName === selectedBank?.name &&
+          itemYear === currentYear &&
+          itemMonth === currentMonth
+        ) {
+          // TODAY ONLY
+
+          if (item.date === today) {
+            if (item.type === "credited") {
+              todayCreditAmount += Number(item.amount);
+            }
+
+            if (item.type === "debited") {
+              todayDebitAmount += Number(item.amount);
+            }
+          }
+        }
+      });
+
+      // FINAL VALUES
+
+      setTodayCredit(todayCreditAmount);
+
+      setTodayDebit(todayDebitAmount);
+
+      // ACTIVE BANK BALANCE
+
+      if (selectedBank) {
+        setCurrentBalance(selectedBank.balance);
+      } else {
+        setCurrentBalance(0);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      loadBanks();
+
+      loadData();
+    });
+
+    return unsubscribe;
+  }, [selectedBank]);
+
+  const clearAllData = async () => {
+    Alert.alert(
+      "Clear",
+
+      "Delete all data?",
+
+      [
+        {
+          text: "Cancel",
+        },
+
+        {
+          text: "Clear",
+
+          onPress: async () => {
+            await AsyncStorage.removeItem("transactions");
+
+            await AsyncStorage.removeItem("incomeHistory");
+
+            loadData();
+          },
+        },
+      ],
+    );
+  };
+
+  return (
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.heading}>Money Manager</Text>
+
+          <Text style={styles.date}>{new Date().toDateString()}</Text>
+
+          <Text style={styles.by}>By Adityaraj Patil</Text>
+
+          <View style={styles.bankRow}>
+            <TouchableOpacity
+              style={styles.bankSelector}
+              onPress={() => setShowBankList(!showBankList)}
+            >
+              <Ionicons name="card" size={16} color="#3b82f6" />
+
+              <Text style={styles.bankText}>{selectedBank?.name}</Text>
+
+              <Ionicons name="chevron-down" size={16} color="white" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.addBankBtn}
+              onPress={() => setShowBankModal(true)}
+            >
+              <Ionicons name="add" size={18} color="white" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <TouchableOpacity style={styles.clearBtn} onPress={clearAllData}>
+          <Ionicons name="trash" size={18} color="white" />
+        </TouchableOpacity>
+      </View>
+
+      {showBankList && (
+        <View style={styles.dropdown}>
+          {banks.map((bank) => (
+            <TouchableOpacity
+              key={bank.id}
+              style={styles.bankItem}
+              onPress={() => selectBank(bank)}
+            >
+              <View>
+                <Text style={styles.bankName}>{bank.name}</Text>
+
+                <Text style={styles.bankBal}>₹{bank.balance}</Text>
+              </View>
+
+              {selectedBank?.id === bank.id && (
+                <Ionicons name="checkmark-circle" size={20} color="#2563eb" />
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      <View style={styles.balanceCard}>
+        <Text style={styles.balanceTitle}>{selectedBank?.name} Balance</Text>
+
+        <Text style={styles.balance}>₹ {currentBalance}</Text>
+      </View>
+
+      <View style={styles.row}>
+        <View style={styles.smallCard}>
+          <Text style={styles.cardTitle}>Today Credited</Text>
+
+          <Text style={styles.green}>₹ {todayCredit}</Text>
+        </View>
+
+        <View style={styles.smallCard}>
+          <Text style={styles.cardTitle}>Today Debited</Text>
+
+          <Text style={styles.red}>₹ {todayDebit}</Text>
+        </View>
+      </View>
+
+      <View style={styles.incomeCard}>
+        <View style={styles.incomeHeader}>
+          <Text style={styles.cardTitle}>Current Month Income</Text>
+
+          <TouchableOpacity onPress={() => setShowIncome(!showIncome)}>
+            <Ionicons
+              name={showIncome ? "eye" : "eye-off"}
+              size={22}
+              color="white"
+            />
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.green}>
+          {showIncome ? `₹ ${monthlyIncome}` : "₹ •••••"}
+        </Text>
+      </View>
+
+      <View style={styles.buttonRow}>
+        <TouchableOpacity
+          style={styles.incomeBtn}
+          onPress={() => navigation.navigate("AddIncome")}
+        >
+          <Ionicons name="wallet" size={24} color="white" />
+
+          <Text style={styles.btnText}>Add Income</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.transBtn}
+          onPress={() => navigation.navigate("AddTransaction")}
+        >
+          <Ionicons name="add-circle" size={24} color="white" />
+
+          <Text style={styles.btnText}>Transaction</Text>
+        </TouchableOpacity>
+      </View>
+
+      <Modal visible={showBankModal} transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Add Bank</Text>
+
+            <TextInput
+              placeholder="Bank Name"
+              placeholderTextColor="#94a3b8"
+              style={styles.input}
+              value={bankName}
+              onChangeText={setBankName}
+            />
+
+            <TextInput
+              placeholder="Amount"
+              placeholderTextColor="#94a3b8"
+              keyboardType="numeric"
+              style={styles.input}
+              value={bankAmount}
+              onChangeText={setBankAmount}
+            />
+
+            <TouchableOpacity style={styles.saveBtn} onPress={saveBank}>
+              <Text style={styles.saveText}>Save Bank</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <View
+        style={{
+          height: 120,
+        }}
+      />
+    </ScrollView>
+  );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
 
-    container: {
+    backgroundColor: "#020617",
 
-        flex: 1,
+    padding: 18,
+  },
 
-        backgroundColor: '#020617',
+  header: {
+    marginTop: 50,
 
-        padding: 20,
+    flexDirection: "row",
 
-    },
+    justifyContent: "space-between",
+  },
 
-    heading: {
+  heading: {
+    color: "white",
 
-        color: 'white',
+    fontSize: 32,
 
-        fontSize: 38,
+    fontWeight: "bold",
+  },
 
-        fontWeight: 'bold',
+  date: {
+    color: "#cbd5e1",
 
-        marginTop: 50,
+    marginTop: 5,
+  },
 
-    },
+  by: {
+    color: "#64748b",
 
-    dateText: {
+    marginTop: 4,
+  },
 
-        color: '#cbd5e1',
+  bankRow: {
+    flexDirection: "row",
 
-        fontSize: 14,
+    marginTop: 16,
+  },
 
-        marginTop: 8,
+  bankSelector: {
+    flexDirection: "row",
 
-        marginBottom: 5,
+    alignItems: "center",
 
-    },
+    backgroundColor: "#111827",
 
-    nameRow: {
+    padding: 12,
 
-        flexDirection: 'row',
+    borderRadius: 16,
+  },
 
-        alignItems: 'center',
+  bankText: {
+    color: "white",
 
-        justifyContent: 'space-between',
+    marginHorizontal: 10,
+  },
 
-        marginBottom: 25,
+  addBankBtn: {
+    width: 44,
 
-    },
+    height: 44,
 
-    subHeading: {
+    backgroundColor: "#2563eb",
 
-        color: '#64748b',
+    borderRadius: 14,
 
-        fontSize: 14,
+    justifyContent: "center",
 
-    },
+    alignItems: "center",
 
-    clearIcon: {
+    marginLeft: 12,
+  },
 
-        backgroundColor: '#dc2626',
+  clearBtn: {
+    width: 45,
 
-        width: 35,
+    height: 45,
 
-        height: 35,
+    borderRadius: 14,
 
-        borderRadius: 20,
+    backgroundColor: "#dc2626",
 
-        justifyContent: 'center',
+    justifyContent: "center",
 
-        alignItems: 'center',
+    alignItems: "center",
+  },
 
-    },
+  dropdown: {
+    backgroundColor: "#111827",
 
-    clearIconText: {
+    borderRadius: 22,
 
-        fontSize: 16,
+    marginTop: 20,
 
-    },
+    padding: 16,
+  },
 
-    row: {
+  bankItem: {
+    flexDirection: "row",
 
-        flexDirection: 'row',
+    justifyContent: "space-between",
 
-        justifyContent: 'space-between',
+    alignItems: "center",
 
-    },
+    paddingVertical: 12,
+  },
 
-    smallCard: {
+  bankName: {
+    color: "white",
 
-        width: '48%',
+    fontWeight: "bold",
+  },
 
-        backgroundColor: '#1e293b',
+  bankBal: {
+    color: "#94a3b8",
 
-        padding: 15,
+    marginTop: 4,
+  },
 
-        borderRadius: 18,
+  balanceCard: {
+    backgroundColor: "#0f172a",
 
-    },
+    padding: 28,
 
-    smallTitle: {
+    borderRadius: 28,
 
-        color: '#94a3b8',
+    marginTop: 24,
+  },
 
-        marginBottom: 10,
+  balanceTitle: {
+    color: "#94a3b8",
+  },
 
-        fontSize: 13,
+  balance: {
+    color: "white",
 
-    },
+    fontSize: 40,
 
-    creditText: {
+    fontWeight: "bold",
 
-        color: '#22c55e',
+    marginTop: 10,
+  },
 
-        fontSize: 24,
+  row: {
+    flexDirection: "row",
 
-        fontWeight: 'bold',
+    justifyContent: "space-between",
 
-    },
+    marginTop: 20,
+  },
 
-    debitText: {
+  smallCard: {
+    width: "48%",
 
-        color: '#ef4444',
+    backgroundColor: "#111827",
 
-        fontSize: 24,
+    padding: 20,
 
-        fontWeight: 'bold',
+    borderRadius: 22,
+  },
 
-    },
+  cardTitle: {
+    color: "#94a3b8",
+  },
 
-    balanceCard: {
+  green: {
+    color: "#22c55e",
 
-        backgroundColor: '#1e293b',
+    fontSize: 28,
 
-        padding: 20,
+    fontWeight: "bold",
 
-        borderRadius: 18,
+    marginTop: 10,
+  },
 
-        marginTop: 20,
+  red: {
+    color: "#ef4444",
 
-    },
+    fontSize: 28,
 
-    balanceTitle: {
+    fontWeight: "bold",
 
-        color: '#94a3b8',
+    marginTop: 10,
+  },
 
-        marginBottom: 10,
+  incomeCard: {
+    backgroundColor: "#111827",
 
-        fontSize: 13,
+    borderRadius: 24,
 
-    },
+    padding: 24,
 
-    balanceAmount: {
+    marginTop: 20,
+  },
 
-        color: 'white',
+  incomeHeader: {
+    flexDirection: "row",
 
-        fontSize: 36,
+    justifyContent: "space-between",
+  },
 
-        fontWeight: 'bold',
+  buttonRow: {
+    flexDirection: "row",
 
-    },
+    justifyContent: "space-between",
 
-    incomeButton: {
+    marginTop: 24,
+  },
 
-        backgroundColor: '#16a34a',
+  incomeBtn: {
+    backgroundColor: "#16a34a",
 
-        padding: 18,
+    width: "48%",
 
-        borderRadius: 15,
+    padding: 20,
 
-        marginTop: 20,
+    borderRadius: 24,
 
-        alignItems: 'center',
+    alignItems: "center",
+  },
 
-    },
+  transBtn: {
+    backgroundColor: "#2563eb",
 
-    transactionButton: {
+    width: "48%",
 
-        backgroundColor: '#2563eb',
+    padding: 20,
 
-        padding: 18,
+    borderRadius: 24,
 
-        borderRadius: 15,
+    alignItems: "center",
+  },
 
-        marginTop: 15,
+  btnText: {
+    color: "white",
 
-        alignItems: 'center',
+    marginTop: 8,
 
-    },
+    fontWeight: "bold",
+  },
 
-    buttonText: {
+  modalOverlay: {
+    flex: 1,
 
-        color: 'white',
+    backgroundColor: "rgba(0,0,0,0.6)",
 
-        fontWeight: 'bold',
+    justifyContent: "center",
 
-    },
+    alignItems: "center",
+  },
 
-    historyHeader: {
+  modalBox: {
+    width: "88%",
 
-        marginTop: 35,
+    backgroundColor: "#111827",
 
-        flexDirection: 'row',
+    borderRadius: 30,
 
-        justifyContent: 'space-between',
+    padding: 24,
+  },
 
-    },
+  modalTitle: {
+    color: "white",
 
-    historyTitle: {
+    fontSize: 24,
 
-        color: 'white',
+    fontWeight: "bold",
 
-        fontSize: 20,
+    marginBottom: 20,
+  },
 
-        fontWeight: 'bold',
+  input: {
+    backgroundColor: "#1e293b",
 
-    },
+    borderRadius: 18,
 
-    fullHistory: {
+    padding: 16,
 
-        color: '#3b82f6',
+    color: "white",
 
-    },
+    marginBottom: 16,
+  },
 
-    historyCard: {
+  saveBtn: {
+    backgroundColor: "#2563eb",
 
-        backgroundColor: '#1e293b',
+    padding: 18,
 
-        padding: 18,
+    borderRadius: 18,
 
-        borderRadius: 15,
+    alignItems: "center",
+  },
 
-        marginTop: 15,
+  saveText: {
+    color: "white",
 
-        flexDirection: 'row',
-
-        justifyContent: 'space-between',
-
-    },
-
-    historyAmount: {
-
-        color: '#22c55e',
-
-        fontSize: 22,
-
-        fontWeight: 'bold',
-
-    },
-
-    historyDate: {
-
-        color: '#94a3b8',
-
-        marginTop: 5,
-
-        fontSize: 12,
-
-    },
-
-    historyMode: {
-
-        color: 'white',
-
-        fontWeight: 'bold',
-
-    },
-
+    fontWeight: "bold",
+  },
 });

@@ -1,650 +1,689 @@
-// screens/SavingsScreen.js
-
-import React, {
-    useEffect,
-    useState,
-} from 'react';
+import { useEffect, useState } from "react";
 
 import {
-    View,
-    Text,
-    StyleSheet,
     ScrollView,
-    Dimensions,
-    TextInput,
-} from 'react-native';
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from "react-native";
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import {
-    LineChart,
-} from 'react-native-chart-kit';
-
-const screenWidth =
-    Dimensions.get('window').width;
+import Ionicons from "react-native-vector-icons/Ionicons";
 
 export default function SavingsScreen() {
+  const [banks, setBanks] = useState([]);
 
-    const currentDate =
-        new Date();
+  const [selectedBank, setSelectedBank] = useState("All");
 
-    const currentMonth =
-        String(
-            currentDate.getMonth() + 1
-        ).padStart(2, '0');
+  const [showBankList, setShowBankList] = useState(false);
 
-    const currentYear =
-        currentDate
-            .getFullYear()
-            .toString();
+  const [totalBalance, setTotalBalance] = useState(0);
 
-    const [year, setYear] =
-        useState(currentYear);
+  const [totalIncome, setTotalIncome] = useState(0);
 
-    const [month, setMonth] =
-        useState(currentMonth);
+  const [totalCredit, setTotalCredit] = useState(0);
 
-    const [income, setIncome] =
-        useState(0);
+  const [totalDebit, setTotalDebit] = useState(0);
 
-    const [credited, setCredited] =
-        useState(0);
+  const [monthlySaving, setMonthlySaving] = useState(0);
 
-    const [debited, setDebited] =
-        useState(0);
+  const [savingPercent, setSavingPercent] = useState(0);
 
-    const [monthSavings,
-        setMonthSavings] =
-        useState(0);
+  const [yearlyData, setYearlyData] = useState([]);
 
-    const [yearlySavings,
-        setYearlySavings] =
-        useState(
-            Array(12).fill(0)
-        );
+  useEffect(() => {
+    loadData();
+  }, [selectedBank]);
 
-    const loadData = async () => {
+  const loadData = async () => {
+    const incomeHistory =
+      JSON.parse(await AsyncStorage.getItem("incomeHistory")) || [];
 
-        try {
+    const transactionHistory =
+      JSON.parse(await AsyncStorage.getItem("transactions")) || [];
 
-            const incomeHistory =
+    const savedBanks = JSON.parse(await AsyncStorage.getItem("banks")) || [];
 
-                JSON.parse(
+    setBanks(savedBanks);
 
-                    await AsyncStorage.getItem(
-                        'incomeHistory'
-                    )
+    const currentDate = new Date();
 
-                ) || [];
+    const currentMonth = String(currentDate.getMonth() + 1).padStart(2, "0");
 
-            const transactions =
+    const currentYear = currentDate.getFullYear().toString();
 
-                JSON.parse(
+    // FILTER DATA
 
-                    await AsyncStorage.getItem(
-                        'transactions'
-                    )
+    let filteredIncome = incomeHistory;
 
-                ) || [];
+    let filteredTransactions = transactionHistory;
 
-            let totalIncome = 0;
+    if (selectedBank !== "All") {
+      filteredIncome = incomeHistory.filter(
+        (item) => item.bankName === selectedBank,
+      );
 
-            let totalCredit = 0;
+      filteredTransactions = transactionHistory.filter(
+        (item) => item.bankName === selectedBank,
+      );
+    }
 
-            let totalDebit = 0;
+    // TOTAL BALANCE
 
-            let yearlyArray =
-                Array(12).fill(0);
+    let bankBalance = 0;
 
-            // INCOME
+    if (selectedBank === "All") {
+      savedBanks.forEach((bank) => {
+        bankBalance += Number(bank.balance);
+      });
+    } else {
+      const active = savedBanks.find((b) => b.name === selectedBank);
 
-            incomeHistory.forEach((item) => {
+      bankBalance = active?.balance || 0;
+    }
 
-                const splitDate =
-                    item.date.split('-');
+    setTotalBalance(bankBalance);
 
-                const itemYear =
-                    splitDate[0];
+    // TOTAL INCOME
 
-                const itemMonth =
-                    splitDate[1];
+    let income = 0;
 
-                const monthIndex =
-                    Number(itemMonth) - 1;
+    filteredIncome.forEach((item) => {
+      const split = item.date.split("-");
 
-                if (
-                    itemYear === year
-                ) {
+      if (split[0] === currentYear && split[1] === currentMonth) {
+        income += Number(item.amount);
+      }
+    });
 
-                    yearlyArray[
-                        monthIndex
-                    ] += Number(
-                        item.amount
-                    );
+    setTotalIncome(income);
 
-                }
+    // CREDIT / DEBIT
 
-                if (
+    let credit = 0;
 
-                    itemYear === year &&
+    let debit = 0;
 
-                    itemMonth === month
+    filteredTransactions.forEach((item) => {
+      const split = item.date.split("-");
 
-                ) {
-
-                    totalIncome +=
-                        Number(
-                            item.amount
-                        );
-
-                }
-
-            });
-
-            // TRANSACTIONS
-
-            transactions.forEach((item) => {
-
-                const splitDate =
-                    item.date.split('-');
-
-                const itemYear =
-                    splitDate[0];
-
-                const itemMonth =
-                    splitDate[1];
-
-                const monthIndex =
-                    Number(itemMonth) - 1;
-
-                if (
-                    itemYear === year
-                ) {
-
-                    if (
-                        item.type ===
-                        'credited'
-                    ) {
-
-                        yearlyArray[
-                            monthIndex
-                        ] += Number(
-                            item.amount
-                        );
-
-                    }
-
-                    if (
-                        item.type ===
-                        'debited'
-                    ) {
-
-                        yearlyArray[
-                            monthIndex
-                        ] -= Number(
-                            item.amount
-                        );
-
-                    }
-
-                }
-
-                if (
-
-                    itemYear === year &&
-
-                    itemMonth === month
-
-                ) {
-
-                    if (
-                        item.type ===
-                        'credited'
-                    ) {
-
-                        totalCredit +=
-                            Number(
-                                item.amount
-                            );
-
-                    }
-
-                    if (
-                        item.type ===
-                        'debited'
-                    ) {
-
-                        totalDebit +=
-                            Number(
-                                item.amount
-                            );
-
-                    }
-
-                }
-
-            });
-
-            const finalMonthSavings =
-
-                totalIncome +
-
-                totalCredit -
-
-                totalDebit;
-
-            setIncome(totalIncome);
-
-            setCredited(totalCredit);
-
-            setDebited(totalDebit);
-
-            setMonthSavings(
-                finalMonthSavings
-            );
-
-            setYearlySavings(
-                yearlyArray
-            );
-
+      if (split[0] === currentYear && split[1] === currentMonth) {
+        if (item.type === "credited") {
+          credit += Number(item.amount);
         }
 
-        catch (error) {
-
-            console.log(error);
-
+        if (item.type === "debited") {
+          debit += Number(item.amount);
         }
+      }
+    });
 
-    };
+    setTotalCredit(credit);
 
-    useEffect(() => {
+    setTotalDebit(debit);
 
-        loadData();
+    // SAVING
 
-    }, [year, month]);
+    // const saving = income + credit - debit;
+    const saving = bankBalance;
 
-    return (
+    setMonthlySaving(saving);
 
-        <ScrollView
-            style={styles.container}
+    setMonthlySaving(saving);
+
+    // PERCENTAGE
+
+    // const totalFlow = income + credit;
+
+    // if (totalFlow > 0) {
+    //   const percent = ((saving / totalFlow) * 100).toFixed(1);
+
+    //   setSavingPercent(percent);
+    // } else {
+    //   setSavingPercent(0);
+    // }
+    let totalFlow = income + credit;
+
+    if (totalFlow <= 0) {
+      totalFlow = bankBalance;
+    }
+
+    if (totalFlow > 0) {
+      const percent = ((bankBalance / totalFlow) * 100).toFixed(1);
+
+      setSavingPercent(percent);
+    } else {
+      setSavingPercent(0);
+    }
+
+    // YEARLY DATA
+
+    //     const months = [
+    //       "Jan",
+    //       "Feb",
+    //       "Mar",
+    //       "Apr",
+    //       "May",
+    //       "Jun",
+    //       "Jul",
+    //       "Aug",
+    //       "Sep",
+    //       "Oct",
+    //       "Nov",
+    //       "Dec",
+    //     ];
+
+    //     const chartData = [];
+
+    //     for (let i = 1; i <= 12; i++) {
+    //       let monthSaving = 0;
+
+    //       filteredIncome.forEach((item) => {
+    //         const split = item.date.split("-");
+
+    //         if (Number(split[1]) === i) {
+    //           monthSaving += Number(item.amount);
+    //         }
+    //       });
+
+    //       filteredTransactions.forEach((item) => {
+    //         const split = item.date.split("-");
+
+    //         if (Number(split[1]) === i) {
+    //           if (item.type === "credited") {
+    //             monthSaving += Number(item.amount);
+    //           }
+
+    //           if (item.type === "debited") {
+    //             monthSaving -= Number(item.amount);
+    //           }
+    //         }
+    //       });
+
+    //       chartData.push({
+    //         month: months[i - 1],
+
+    //         amount: monthSaving,
+    //       });
+    //     }
+
+    //     setYearlyData(chartData);
+    //   };
+    // YEARLY DATA
+
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+
+    const chartData = [];
+
+    for (let i = 1; i <= 12; i++) {
+      let monthSaving = 0;
+
+      // ADD INCOME
+
+      filteredIncome.forEach((item) => {
+        const split = item.date.split("-");
+
+        if (Number(split[1]) === i) {
+          monthSaving += Number(item.amount);
+        }
+      });
+
+      // ADD TRANSACTIONS
+
+      filteredTransactions.forEach((item) => {
+        const split = item.date.split("-");
+
+        if (Number(split[1]) === i) {
+          if (item.type === "credited") {
+            monthSaving += Number(item.amount);
+          }
+
+          if (item.type === "debited") {
+            monthSaving -= Number(item.amount);
+          }
+        }
+      });
+
+      // CURRENT MONTH SHOW BANK BALANCE
+
+      if (i === currentDate.getMonth() + 1) {
+        if (monthSaving <= 0) {
+          monthSaving = bankBalance;
+        }
+      }
+
+      chartData.push({
+        month: months[i - 1],
+
+        amount: monthSaving,
+      });
+    }
+
+    setYearlyData(chartData);
+  };
+
+  return (
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {/* HEADER */}
+
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.title}>Savings Analysis</Text>
+
+          <Text style={styles.subtitle}>Smart finance overview</Text>
+        </View>
+
+        <TouchableOpacity style={styles.refreshBtn} onPress={loadData}>
+          <Ionicons name="refresh" size={22} color="white" />
+        </TouchableOpacity>
+      </View>
+
+      {/* BANK SELECTOR */}
+
+      <TouchableOpacity
+        style={styles.bankSelector}
+        onPress={() => setShowBankList(!showBankList)}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+
+            alignItems: "center",
+          }}
         >
+          <Ionicons name="card" size={18} color="#3b82f6" />
 
-            <Text style={styles.heading}>
-                Savings
-            </Text>
+          <Text style={styles.bankText}>{selectedBank}</Text>
+        </View>
 
-            {/* YEAR */}
+        <Ionicons name="chevron-down" size={18} color="white" />
+      </TouchableOpacity>
 
-            <Text style={styles.label}>
-                Year
-            </Text>
+      {/* DROPDOWN */}
 
-            <TextInput
+      {showBankList && (
+        <View style={styles.dropdown}>
+          <TouchableOpacity
+            style={styles.bankItem}
+            onPress={() => {
+              setSelectedBank("All");
 
-                value={year}
+              setShowBankList(false);
+            }}
+          >
+            <Text style={styles.bankItemText}>All Banks</Text>
+          </TouchableOpacity>
 
-                onChangeText={setYear}
+          {banks.map((bank) => (
+            <TouchableOpacity
+              key={bank.id}
+              style={styles.bankItem}
+              onPress={() => {
+                setSelectedBank(bank.name);
 
-                placeholder="2025"
+                setShowBankList(false);
+              }}
+            >
+              <Text style={styles.bankItemText}>{bank.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
-                placeholderTextColor="#64748b"
+      {/* TOTAL BALANCE */}
 
-                keyboardType="numeric"
+      <View style={styles.balanceCard}>
+        <Text style={styles.balanceLabel}>Total Balance</Text>
 
-                style={styles.input}
+        <Text style={styles.balanceAmount}>₹ {totalBalance}</Text>
+      </View>
 
+      {/* ANALYSIS */}
+
+      <View style={styles.row}>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Income</Text>
+
+          <Text style={styles.green}>₹ {totalIncome}</Text>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Credited</Text>
+
+          <Text style={styles.blue}>₹ {totalCredit}</Text>
+        </View>
+      </View>
+
+      <View style={styles.row}>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Debited</Text>
+
+          <Text style={styles.red}>₹ {totalDebit}</Text>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Saving %</Text>
+
+          <Text style={styles.yellow}>{savingPercent}%</Text>
+        </View>
+      </View>
+
+      {/* MONTH SAVING */}
+
+      <View style={styles.savingCard}>
+        <Text style={styles.savingTitle}>This Month Saving</Text>
+
+        <Text style={styles.savingAmount}>₹ {monthlySaving}</Text>
+      </View>
+
+      {/* YEARLY CHART */}
+
+      <Text style={styles.chartTitle}>Yearly Savings</Text>
+
+      {yearlyData.map((item, index) => (
+        <View key={index} style={styles.chartRow}>
+          <Text style={styles.month}>{item.month}</Text>
+
+          <View style={styles.chartBarContainer}>
+            <View
+              style={[
+                styles.chartBar,
+
+                {
+                  width: `${Math.min(Math.abs(item.amount) / 100, 100)}%`,
+                },
+              ]}
             />
-
-            {/* MONTH */}
-
-            <Text style={styles.label}>
-                Month
-            </Text>
-
-            <TextInput
-
-                value={month}
-
-                onChangeText={setMonth}
-
-                placeholder="05"
-
-                placeholderTextColor="#64748b"
-
-                keyboardType="numeric"
-
-                style={styles.input}
-
-            />
-
-            {/* MONTH SAVINGS */}
-
-            <View style={styles.mainCard}>
-
-                <Text style={styles.mainTitle}>
-                    Monthly Savings
-                </Text>
-
-                <Text style={styles.mainAmount}>
-                    ₹ {monthSavings}
-                </Text>
-
-            </View>
-
-            {/* SMALL STATS */}
-
-            <View style={styles.row}>
-
-                <View style={styles.smallCard}>
-
-                    <Text style={styles.smallTitle}>
-                        Income
-                    </Text>
-
-                    <Text style={styles.greenText}>
-                        ₹ {income}
-                    </Text>
-
-                </View>
-
-                <View style={styles.smallCard}>
-
-                    <Text style={styles.smallTitle}>
-                        Credited
-                    </Text>
-
-                    <Text style={styles.blueText}>
-                        ₹ {credited}
-                    </Text>
-
-                </View>
-
-            </View>
-
-            <View style={styles.smallCardFull}>
-
-                <Text style={styles.smallTitle}>
-                    Debited
-                </Text>
-
-                <Text style={styles.redText}>
-                    ₹ {debited}
-                </Text>
-
-            </View>
-
-            {/* GRAPH */}
-
-            <Text style={styles.graphTitle}>
-                Yearly Savings
-            </Text>
-
-            <LineChart
-
-                data={{
-
-                    labels: [
-
-                        'J',
-                        'F',
-                        'M',
-                        'A',
-                        'M',
-                        'J',
-
-                        'J',
-                        'A',
-                        'S',
-                        'O',
-                        'N',
-                        'D',
-
-                    ],
-
-                    datasets: [
-                        {
-                            data:
-                                yearlySavings,
-                        },
-                    ],
-
-                }}
-
-                width={
-                    screenWidth - 40
-                }
-
-                height={240}
-
-                yAxisSuffix="₹"
-
-                chartConfig={{
-
-                    backgroundColor:
-                        '#111827',
-
-                    backgroundGradientFrom:
-                        '#111827',
-
-                    backgroundGradientTo:
-                        '#111827',
-
-                    decimalPlaces: 0,
-
-                    color: (opacity = 1) =>
-
-                        `rgba(59,130,246,${opacity})`,
-
-                    labelColor: (
-                        opacity = 1
-                    ) =>
-
-                        `rgba(255,255,255,${opacity})`,
-
-                    propsForDots: {
-
-                        r: '4',
-
-                        strokeWidth: '2',
-
-                        stroke: '#3b82f6',
-
-                    },
-
-                }}
-
-                bezier
-
-                style={styles.chart}
-
-            />
-
-            <View style={{ height: 100 }} />
-
-        </ScrollView>
-
-    );
-
+          </View>
+
+          <Text style={styles.chartAmount}>₹{item.amount}</Text>
+        </View>
+      ))}
+
+      <View
+        style={{
+          height: 100,
+        }}
+      />
+    </ScrollView>
+  );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
 
-    container: {
+    backgroundColor: "#020617",
 
-        flex: 1,
+    padding: 18,
+  },
 
-        backgroundColor: '#020617',
+  header: {
+    marginTop: 50,
 
-        padding: 20,
+    marginBottom: 20,
 
-    },
+    flexDirection: "row",
 
-    heading: {
+    justifyContent: "space-between",
 
-        color: 'white',
+    alignItems: "center",
+  },
 
-        fontSize: 34,
+  title: {
+    color: "white",
 
-        fontWeight: 'bold',
+    fontSize: 30,
 
-        marginTop: 50,
+    fontWeight: "bold",
+  },
 
-        marginBottom: 25,
+  subtitle: {
+    color: "#64748b",
 
-    },
+    marginTop: 4,
+  },
 
-    label: {
+  refreshBtn: {
+    width: 48,
 
-        color: '#94a3b8',
+    height: 48,
 
-        fontSize: 13,
+    borderRadius: 24,
 
-        marginBottom: 8,
+    backgroundColor: "#2563eb",
 
-        marginTop: 10,
+    justifyContent: "center",
 
-    },
+    alignItems: "center",
+  },
 
-    input: {
+  bankSelector: {
+    backgroundColor: "#111827",
 
-        backgroundColor: '#111827',
+    padding: 16,
 
-        borderRadius: 14,
+    borderRadius: 18,
 
-        padding: 14,
+    flexDirection: "row",
 
-        color: 'white',
+    justifyContent: "space-between",
 
-        marginBottom: 15,
+    alignItems: "center",
 
-        fontSize: 15,
+    marginBottom: 20,
+  },
 
-    },
+  bankText: {
+    color: "white",
 
-    mainCard: {
+    marginLeft: 10,
 
-        backgroundColor: '#2563eb',
+    fontWeight: "600",
 
-        padding: 25,
+    fontSize: 15,
+  },
 
-        borderRadius: 24,
+  dropdown: {
+    backgroundColor: "#111827",
 
-        marginTop: 10,
+    borderRadius: 20,
 
-    },
+    padding: 10,
 
-    mainTitle: {
+    marginBottom: 20,
+  },
 
-        color: '#dbeafe',
+  bankItem: {
+    padding: 14,
 
-        fontSize: 15,
+    borderBottomWidth: 1,
 
-        marginBottom: 10,
+    borderBottomColor: "#1e293b",
+  },
 
-    },
+  bankItemText: {
+    color: "white",
 
-    mainAmount: {
+    fontSize: 15,
+  },
 
-        color: 'white',
+  balanceCard: {
+    backgroundColor: "#111827",
 
-        fontSize: 42,
+    padding: 30,
 
-        fontWeight: 'bold',
+    borderRadius: 28,
 
-    },
+    marginBottom: 20,
+  },
 
-    row: {
+  balanceLabel: {
+    color: "#94a3b8",
 
-        flexDirection: 'row',
+    fontSize: 14,
+  },
 
-        justifyContent: 'space-between',
+  balanceAmount: {
+    color: "white",
 
-        marginTop: 18,
+    fontSize: 38,
 
-    },
+    fontWeight: "bold",
 
-    smallCard: {
+    marginTop: 10,
+  },
 
-        width: '48%',
+  row: {
+    flexDirection: "row",
 
-        backgroundColor: '#111827',
+    justifyContent: "space-between",
 
-        padding: 18,
+    marginBottom: 18,
+  },
 
-        borderRadius: 18,
+  card: {
+    width: "48%",
 
-    },
+    backgroundColor: "#111827",
 
-    smallCardFull: {
+    borderRadius: 24,
 
-        backgroundColor: '#111827',
+    padding: 20,
+  },
 
-        padding: 18,
+  cardTitle: {
+    color: "#94a3b8",
 
-        borderRadius: 18,
+    marginBottom: 10,
+  },
 
-        marginTop: 15,
+  green: {
+    color: "#22c55e",
 
-    },
+    fontSize: 24,
 
-    smallTitle: {
+    fontWeight: "bold",
+  },
 
-        color: '#94a3b8',
+  blue: {
+    color: "#3b82f6",
 
-        fontSize: 13,
+    fontSize: 24,
 
-        marginBottom: 10,
+    fontWeight: "bold",
+  },
 
-    },
+  red: {
+    color: "#ef4444",
 
-    greenText: {
+    fontSize: 24,
 
-        color: '#22c55e',
+    fontWeight: "bold",
+  },
 
-        fontSize: 24,
+  yellow: {
+    color: "#facc15",
 
-        fontWeight: 'bold',
+    fontSize: 24,
 
-    },
+    fontWeight: "bold",
+  },
 
-    blueText: {
+  savingCard: {
+    backgroundColor: "#111827",
 
-        color: '#3b82f6',
+    padding: 28,
 
-        fontSize: 24,
+    borderRadius: 28,
 
-        fontWeight: 'bold',
+    marginBottom: 24,
+  },
 
-    },
+  savingTitle: {
+    color: "#94a3b8",
 
-    redText: {
+    fontSize: 14,
+  },
 
-        color: '#ef4444',
+  savingAmount: {
+    color: "#22c55e",
 
-        fontSize: 24,
+    fontSize: 38,
 
-        fontWeight: 'bold',
+    fontWeight: "bold",
 
-    },
+    marginTop: 12,
+  },
 
-    graphTitle: {
+  chartTitle: {
+    color: "white",
 
-        color: 'white',
+    fontSize: 22,
 
-        fontSize: 20,
+    fontWeight: "bold",
 
-        fontWeight: 'bold',
+    marginBottom: 20,
+  },
 
-        marginTop: 30,
+  chartRow: {
+    flexDirection: "row",
 
-        marginBottom: 15,
+    alignItems: "center",
 
-    },
+    marginBottom: 16,
+  },
 
-    chart: {
+  month: {
+    color: "white",
 
-        borderRadius: 22,
+    width: 40,
+  },
 
-    },
+  chartBarContainer: {
+    flex: 1,
 
+    height: 12,
+
+    backgroundColor: "#1e293b",
+
+    borderRadius: 10,
+
+    overflow: "hidden",
+
+    marginHorizontal: 12,
+  },
+
+  chartBar: {
+    height: 12,
+
+    backgroundColor: "#22c55e",
+
+    borderRadius: 10,
+  },
+
+  chartAmount: {
+    color: "white",
+
+    width: 80,
+
+    textAlign: "right",
+
+    fontSize: 12,
+  },
 });

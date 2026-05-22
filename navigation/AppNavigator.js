@@ -1,207 +1,176 @@
-import React from 'react';
+// navigation/AppNavigator.js
 
-import {
-    createNativeStackNavigator,
-} from '@react-navigation/native-stack';
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-import {
-    createBottomTabNavigator,
-} from '@react-navigation/bottom-tabs';
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import Ionicons from "react-native-vector-icons/Ionicons";
+
+// SPLASH
+
+import SplashScreen from "../screens/SplashScreen";
 
 // MAIN SCREENS
 
-import DashboardScreen from '../screens/DashboardScreen';
+import DashboardScreen from "../screens/DashboardScreen";
 
-import HistoryScreen from '../screens/HistoryScreen';
+import HistoryScreen from "../screens/HistoryScreen";
 
-import SavingsScreen from '../screens/SavingsScreen';
+import SavingsScreen from "../screens/SavingsScreen";
 
-import SplitScreen from '../screens/SplitScreen';
+import SplitScreen from "../screens/SplitScreen";
 
-import ProfileScreen from '../screens/ProfileScreen';
+import ProfileScreen from "../screens/ProfileScreen";
+
+import InvestmentScreen from "../screens/InvestmentScreen";
+
+// INVESTMENT SCREENS
+
+import SipScreen from "../screens/SipScreen";
+
+import FdScreen from "../screens/FdScreen";
+
+import SwpScreen from "../screens/SwpScreen";
 
 // FORM SCREENS
 
-import AddTransactionScreen from '../screens/AddTransactionScreen';
+import AddTransactionScreen from "../screens/AddTransactionScreen";
 
-import IncomeScreen from '../screens/IncomeScreen';
+import IncomeScreen from "../screens/IncomeScreen";
 
-const Stack =
-    createNativeStackNavigator();
+const Stack = createNativeStackNavigator();
 
-const Tab =
-    createBottomTabNavigator();
+const Tab = createBottomTabNavigator();
+
+// BOTTOM TABS
 
 function BottomTabs() {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
 
-    return (
+        tabBarStyle: {
+          backgroundColor: "#0f172a",
 
-        <Tab.Navigator
+          borderTopWidth: 0,
 
-            screenOptions={({ route }) => ({
+          height: 70,
 
-                headerShown: false,
+          paddingBottom: 10,
+        },
 
-                tabBarStyle: {
+        tabBarActiveTintColor: "#2563eb",
 
-                    backgroundColor: '#0f172a',
+        tabBarInactiveTintColor: "#cbd5e1",
 
-                    borderTopWidth: 0,
+        tabBarLabelStyle: {
+          fontSize: 11,
 
-                    height: 70,
+          marginBottom: 4,
+        },
 
-                    paddingBottom: 10,
+        tabBarIcon: ({ color, size }) => {
+          let iconName;
 
-                },
+          // HOME
 
-                tabBarActiveTintColor:
-                    '#2563eb',
+          if (route.name === "Home") {
+            iconName = "home";
+          }
 
-                tabBarInactiveTintColor:
-                    '#cbd5e1',
+          // HISTORY
+          else if (route.name === "History") {
+            iconName = "time";
+          }
 
-                tabBarIcon: ({
-                    color,
-                    size,
-                }) => {
+          // SAVINGS
+          else if (route.name === "Savings") {
+            iconName = "bar-chart";
+          }
 
-                    let iconName;
+          // SPLIT
+          else if (route.name === "Split") {
+            iconName = "people";
+          }
 
-                    if (
-                        route.name === 'Home'
-                    ) {
+          // INVESTMENT
+          else if (route.name === "Investment") {
+            iconName = "trending-up";
+          }
 
-                        iconName = 'home';
+          // PROFILE
+          else if (route.name === "Profile") {
+            iconName = "person";
+          }
 
-                    }
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+      })}
+    >
+      {/* HOME */}
 
-                    else if (
-                        route.name === 'History'
-                    ) {
+      <Tab.Screen name="Home" component={DashboardScreen} />
 
-                        iconName = 'time';
+      {/* HISTORY */}
 
-                    }
+      <Tab.Screen name="History" component={HistoryScreen} />
 
-                    else if (
-                        route.name === 'Savings'
-                    ) {
+      {/* SAVINGS */}
 
-                        iconName = 'bar-chart';
+      <Tab.Screen name="Savings" component={SavingsScreen} />
 
-                    }
+      {/* SPLIT */}
 
-                    else if (
-                        route.name === 'Split'
-                    ) {
+      <Tab.Screen name="Split" component={SplitScreen} />
 
-                        iconName = 'people';
+      {/* INVESTMENT */}
 
-                    }
+      <Tab.Screen name="Investment" component={InvestmentScreen} />
 
-                    else if (
-                        route.name === 'Profile'
-                    ) {
+      {/* PROFILE */}
 
-                        iconName = 'person';
-
-                    }
-
-                    return (
-
-                        <Ionicons
-                            name={iconName}
-                            size={size}
-                            color={color}
-                        />
-
-                    );
-
-                },
-
-            })}
-
-        >
-
-            <Tab.Screen
-                name="Home"
-                component={DashboardScreen}
-            />
-
-            <Tab.Screen
-                name="History"
-                component={HistoryScreen}
-            />
-
-            <Tab.Screen
-                name="Savings"
-                component={SavingsScreen}
-            />
-
-            <Tab.Screen
-                name="Split"
-                component={SplitScreen}
-            />
-
-            <Tab.Screen
-                name="Profile"
-                component={ProfileScreen}
-            />
-
-        </Tab.Navigator>
-
-    );
-
+      <Tab.Screen name="Profile" component={ProfileScreen} />
+    </Tab.Navigator>
+  );
 }
 
+// MAIN APP NAVIGATOR
+
 export default function AppNavigator() {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      {/* SPLASH */}
 
-    return (
+      <Stack.Screen name="Splash" component={SplashScreen} />
 
-        <Stack.Navigator>
+      {/* MAIN */}
 
-            <Stack.Screen
+      <Stack.Screen name="Main" component={BottomTabs} />
 
-                name="Main"
+      {/* ADD TRANSACTION */}
 
-                component={BottomTabs}
+      <Stack.Screen name="AddTransaction" component={AddTransactionScreen} />
 
-                options={{
-                    headerShown: false,
-                }}
+      {/* ADD INCOME */}
 
-            />
+      <Stack.Screen name="AddIncome" component={IncomeScreen} />
 
-            <Stack.Screen
+      {/* SIP */}
 
-                name="AddTransaction"
+      <Stack.Screen name="Sip" component={SipScreen} />
 
-                component={
-                    AddTransactionScreen
-                }
+      {/* FD */}
 
-                options={{
-                    headerShown: false,
-                }}
+      <Stack.Screen name="FD" component={FdScreen} />
 
-            />
+      {/* SWP */}
 
-            <Stack.Screen
-
-                name="AddIncome"
-
-                component={IncomeScreen}
-
-                options={{
-                    headerShown: false,
-                }}
-
-            />
-
-        </Stack.Navigator>
-
-    );
-
+      <Stack.Screen name="SWP" component={SwpScreen} />
+    </Stack.Navigator>
+  );
 }

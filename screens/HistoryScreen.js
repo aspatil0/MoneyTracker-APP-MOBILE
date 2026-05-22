@@ -1,593 +1,445 @@
 // screens/HistoryScreen.js
 
-import React, {
-    useEffect,
-    useState,
-} from 'react';
+import { useEffect, useState } from "react";
 
 import {
-    View,
-    Text,
-    StyleSheet,
     ScrollView,
+    StyleSheet,
+    Text,
     TouchableOpacity,
-    TextInput,
-    Alert,
-} from 'react-native';
+    View,
+} from "react-native";
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+import Ionicons from "react-native-vector-icons/Ionicons";
 
 export default function HistoryScreen() {
+  const [transactions, setTransactions] = useState([]);
 
-    const [transactions, setTransactions] =
-        useState([]);
+  const [banks, setBanks] = useState([]);
 
-    const [selectedDate, setSelectedDate] =
-        useState(
-            new Date()
-                .toISOString()
-                .split('T')[0]
-        );
+  const [selectedBank, setSelectedBank] = useState("All");
 
-    const loadHistory = async () => {
+  const [showBankList, setShowBankList] = useState(false);
 
-        try {
+  useEffect(() => {
+    loadData();
+  }, [selectedBank]);
 
-            const storedTransactions =
+  const loadData = async () => {
+    const incomeHistory =
+      JSON.parse(await AsyncStorage.getItem("incomeHistory")) || [];
 
-                JSON.parse(
+    const transactionHistory =
+      JSON.parse(await AsyncStorage.getItem("transactions")) || [];
 
-                    await AsyncStorage.getItem(
-                        'transactions'
-                    )
+    const savedBanks = JSON.parse(await AsyncStorage.getItem("banks")) || [];
 
-                ) || [];
+    setBanks(savedBanks);
 
-            const incomeHistory =
+    const allData = [...incomeHistory, ...transactionHistory];
 
-                JSON.parse(
+    // SORT LATEST FIRST
 
-                    await AsyncStorage.getItem(
-                        'incomeHistory'
-                    )
+    allData.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-                ) || [];
+    // FILTER
 
-            // INCOME DATA FORMAT
+    let filtered = allData;
 
-            const formattedIncome =
+    if (selectedBank !== "All") {
+      filtered = allData.filter((item) => item.bankName === selectedBank);
+    }
 
-                incomeHistory.map((item) => ({
+    setTransactions(filtered);
+  };
 
-                    id: item.id,
+  return (
+    <View style={styles.container}>
+      {/* HEADER */}
 
-                    title: 'Income Added',
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.title}>Transaction History</Text>
 
-                    amount: item.amount,
+          <Text style={styles.subtitle}>Track all bank activities</Text>
+        </View>
 
-                    type: 'credited',
+        {/* REFRESH BUTTON */}
 
-                    date: item.date,
+        <TouchableOpacity style={styles.refreshBtn} onPress={loadData}>
+          <Ionicons name="refresh" size={22} color="white" />
+        </TouchableOpacity>
+      </View>
 
-                    mode: item.mode,
+      {/* BANK SELECTOR */}
 
-                }));
+      <TouchableOpacity
+        style={styles.bankSelector}
+        onPress={() => setShowBankList(!showBankList)}
+      >
+        <View
+          style={{
+            flexDirection: "row",
 
-            // MERGE
-
-            const allData = [
-
-                ...storedTransactions,
-
-                ...formattedIncome,
-
-            ];
-
-            // FILTER DATE
-
-            const filteredData =
-
-                allData.filter(
-
-                    (item) =>
-
-                        item.date ===
-                        selectedDate
-
-                );
-
-            // SORT NEWEST
-
-            filteredData.sort(
-                (a, b) => b.id - a.id
-            );
-
-            setTransactions(
-                filteredData
-            );
-
-        }
-
-        catch (error) {
-
-            console.log(error);
-
-        }
-
-    };
-
-    useEffect(() => {
-
-        loadHistory();
-
-    }, [selectedDate]);
-
-    // REFRESH
-
-    const refreshHistory = async () => {
-
-        loadHistory();
-
-    };
-
-    // CLEAR HISTORY
-
-    const clearHistory = async () => {
-
-        Alert.alert(
-
-            'Clear History',
-
-            'Delete all transaction history?',
-
-            [
-
-                {
-                    text: 'Cancel',
-                    style: 'cancel',
-                },
-
-                {
-
-                    text: 'Yes',
-
-                    onPress: async () => {
-
-                        try {
-
-                            await AsyncStorage.removeItem(
-                                'transactions'
-                            );
-
-                            setTransactions([]);
-
-                            Alert.alert(
-                                'History Cleared'
-                            );
-
-                        }
-
-                        catch (error) {
-
-                            console.log(error);
-
-                        }
-
-                    },
-
-                },
-
-            ]
-
-        );
-
-    };
-
-    // TOTALS
-
-    let totalCredit = 0;
-    let totalDebit = 0;
-
-    transactions.forEach((item) => {
-
-        if (
-            item.type === 'credited'
-        ) {
-
-            totalCredit +=
-                Number(item.amount);
-
-        }
-
-        else {
-
-            totalDebit +=
-                Number(item.amount);
-
-        }
-
-    });
-
-    return (
-
-        <ScrollView
-            style={styles.container}
+            alignItems: "center",
+          }}
         >
+          <Ionicons name="card" size={18} color="#3b82f6" />
 
-            {/* HEADING */}
+          <Text style={styles.bankText}>{selectedBank}</Text>
+        </View>
 
-            <Text style={styles.heading}>
-                History
-            </Text>
+        <Ionicons name="chevron-down" size={18} color="white" />
+      </TouchableOpacity>
 
-            {/* BUTTONS */}
+      {/* DROPDOWN */}
 
-            <View style={styles.topButtons}>
+      {showBankList && (
+        <View style={styles.dropdown}>
+          <TouchableOpacity
+            style={styles.bankItem}
+            onPress={() => {
+              setSelectedBank("All");
 
-                <TouchableOpacity
+              setShowBankList(false);
+            }}
+          >
+            <Text style={styles.bankItemText}>All Banks</Text>
+          </TouchableOpacity>
 
-                    style={styles.refreshButton}
+          {banks.map((bank) => (
+            <TouchableOpacity
+              key={bank.id}
+              style={styles.bankItem}
+              onPress={() => {
+                setSelectedBank(bank.name);
 
-                    onPress={refreshHistory}
+                setShowBankList(false);
+              }}
+            >
+              <Text style={styles.bankItemText}>{bank.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
-                >
+      {/* HISTORY */}
 
-                    <Text style={styles.buttonText}>
-                        Refresh
-                    </Text>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {transactions.length === 0 && (
+          <View style={styles.emptyBox}>
+            <Ionicons name="document-text" size={55} color="#475569" />
 
-                </TouchableOpacity>
+            <Text style={styles.emptyText}>No Transactions</Text>
+          </View>
+        )}
 
-                <TouchableOpacity
+        {transactions.map((item, index) => (
+          <View key={index} style={styles.card}>
+            {/* TOP */}
 
-                    style={styles.clearButton}
+            <View style={styles.topRow}>
+              <View
+                style={{
+                  flex: 1,
+                }}
+              >
+                {/* TITLE */}
 
-                    onPress={clearHistory}
+                <View style={styles.titleBox}>
+                  <Ionicons name="receipt" size={15} color="#f8fafc" />
 
-                >
-
-                    <Text style={styles.buttonText}>
-                        Clear History
-                    </Text>
-
-                </TouchableOpacity>
-
-            </View>
-
-            {/* DATE */}
-
-            <Text style={styles.label}>
-                Please Select Date To Check
-                Transaction History
-            </Text>
-
-            <TextInput
-
-                value={selectedDate}
-
-                onChangeText={
-                    setSelectedDate
-                }
-
-                placeholder="YYYY-MM-DD"
-
-                placeholderTextColor="#94a3b8"
-
-                style={styles.input}
-
-            />
-
-            {/* TOTALS */}
-
-            <View style={styles.totalRow}>
-
-                <View style={styles.totalCard}>
-
-                    <Text style={styles.smallTitle}>
-                        Credited
-                    </Text>
-
-                    <Text style={styles.creditText}>
-                        ₹ {totalCredit}
-                    </Text>
-
+                  <Text style={styles.transactionTitle}>
+                    {item.title
+                      ? item.title
+                      : item.mode
+                        ? item.mode
+                        : item.type === "income"
+                          ? "Income Added"
+                          : "Transaction"}
+                  </Text>
                 </View>
 
-                <View style={styles.totalCard}>
+                {/* AMOUNT */}
 
-                    <Text style={styles.smallTitle}>
-                        Debited
-                    </Text>
+                <Text style={styles.mainAmount}>₹{item.amount}</Text>
 
-                    <Text style={styles.debitText}>
-                        ₹ {totalDebit}
-                    </Text>
+                {/* DATE */}
 
-                </View>
+                <Text style={styles.date}>{item.date}</Text>
+              </View>
 
+              {/* TYPE */}
+
+              <View
+                style={[
+                  styles.typeBadge,
+
+                  item.type === "debited" && {
+                    backgroundColor: "#7f1d1d",
+                  },
+
+                  item.type === "credited" && {
+                    backgroundColor: "#14532d",
+                  },
+
+                  item.type === "income" && {
+                    backgroundColor: "#1e3a8a",
+                  },
+                ]}
+              >
+                <Text style={styles.typeText}>{item.type}</Text>
+              </View>
             </View>
 
-            {/* NO DATA */}
+            {/* BANK */}
 
-            {
-                transactions.length === 0 && (
+            <View style={styles.infoRow}>
+              <Ionicons name="business" size={15} color="#94a3b8" />
 
-                    <Text style={styles.noData}>
-                        No Money Activity On
-                        This Date
-                    </Text>
+              <Text style={styles.infoText}>{item.bankName}</Text>
+            </View>
 
-                )
-            }
+            {/* BEFORE */}
 
-            {/* HISTORY */}
+            <View style={styles.infoRow}>
+              <Ionicons name="arrow-back" size={15} color="#94a3b8" />
 
-            {
-                transactions.map(
-                    (item, index) => (
+              <Text style={styles.infoText}>Before: ₹{item.beforeBalance}</Text>
+            </View>
 
-                        <View
-                            key={index}
-                            style={styles.card}
-                        >
+            {/* AFTER */}
 
-                            <View>
+            <View style={styles.infoRow}>
+              <Ionicons name="arrow-forward" size={15} color="#94a3b8" />
 
-                                <Text style={styles.title}>
-                                    {item.title}
-                                </Text>
+              <Text style={styles.infoText}>After: ₹{item.afterBalance}</Text>
+            </View>
+          </View>
+        ))}
 
-                                <Text style={styles.date}>
-                                    {item.date}
-                                </Text>
-
-                            </View>
-
-                            <Text
-
-                                style={
-
-                                    item.type ===
-                                        'credited'
-
-                                        ? styles.creditAmount
-
-                                        : styles.debitAmount
-
-                                }
-
-                            >
-
-                                ₹ {item.amount}
-
-                            </Text>
-
-                        </View>
-
-                    )
-                )
-            }
-
-            <View style={{ height: 100 }} />
-
-        </ScrollView>
-
-    );
-
+        <View
+          style={{
+            height: 100,
+          }}
+        />
+      </ScrollView>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
 
-    container: {
+    backgroundColor: "#020617",
 
-        flex: 1,
+    padding: 18,
+  },
 
-        backgroundColor: '#020617',
+  header: {
+    marginTop: 50,
 
-        padding: 20,
+    marginBottom: 20,
 
-    },
+    flexDirection: "row",
 
-    heading: {
+    justifyContent: "space-between",
 
-        color: 'white',
+    alignItems: "center",
+  },
 
-        fontSize: 34,
+  title: {
+    color: "white",
 
-        fontWeight: 'bold',
+    fontSize: 30,
 
-        marginTop: 50,
+    fontWeight: "bold",
+  },
 
-        marginBottom: 20,
+  subtitle: {
+    color: "#64748b",
 
-    },
+    marginTop: 4,
+  },
 
-    topButtons: {
+  refreshBtn: {
+    width: 48,
 
-        flexDirection: 'row',
+    height: 48,
 
-        justifyContent: 'space-between',
+    borderRadius: 24,
 
-        marginBottom: 20,
+    backgroundColor: "#2563eb",
 
-    },
+    justifyContent: "center",
 
-    refreshButton: {
+    alignItems: "center",
+  },
 
-        backgroundColor: '#2563eb',
+  bankSelector: {
+    backgroundColor: "#111827",
 
-        padding: 12,
+    padding: 16,
 
-        borderRadius: 12,
+    borderRadius: 18,
 
-        width: '48%',
+    flexDirection: "row",
 
-        alignItems: 'center',
+    justifyContent: "space-between",
 
-    },
+    alignItems: "center",
 
-    clearButton: {
+    marginBottom: 20,
+  },
 
-        backgroundColor: '#dc2626',
+  bankText: {
+    color: "white",
 
-        padding: 12,
+    marginLeft: 10,
 
-        borderRadius: 12,
+    fontWeight: "600",
 
-        width: '48%',
+    fontSize: 15,
+  },
 
-        alignItems: 'center',
+  dropdown: {
+    backgroundColor: "#111827",
 
-    },
+    borderRadius: 20,
 
-    buttonText: {
+    padding: 10,
 
-        color: 'white',
+    marginBottom: 20,
+  },
 
-        fontWeight: 'bold',
+  bankItem: {
+    padding: 14,
 
-    },
+    borderBottomWidth: 1,
 
-    label: {
+    borderBottomColor: "#1e293b",
+  },
 
-        color: '#cbd5e1',
+  bankItemText: {
+    color: "white",
 
-        marginBottom: 10,
+    fontSize: 15,
+  },
 
-        fontSize: 14,
+  card: {
+    backgroundColor: "#111827",
 
-    },
+    borderRadius: 26,
 
-    input: {
+    padding: 20,
 
-        backgroundColor: '#1e293b',
+    marginBottom: 18,
 
-        borderRadius: 12,
+    borderWidth: 1,
 
-        padding: 15,
+    borderColor: "#1e293b",
+  },
 
-        color: 'white',
+  topRow: {
+    flexDirection: "row",
 
-        marginBottom: 20,
+    justifyContent: "space-between",
 
-    },
+    alignItems: "flex-start",
 
-    totalRow: {
+    marginBottom: 14,
+  },
 
-        flexDirection: 'row',
+  titleBox: {
+    backgroundColor: "#1e293b",
 
-        justifyContent: 'space-between',
+    paddingHorizontal: 12,
 
-        marginBottom: 25,
+    paddingVertical: 8,
 
-    },
+    borderRadius: 16,
 
-    totalCard: {
+    flexDirection: "row",
 
-        width: '48%',
+    alignItems: "center",
 
-        backgroundColor: '#1e293b',
+    alignSelf: "flex-start",
 
-        padding: 15,
+    marginBottom: 12,
+  },
 
-        borderRadius: 15,
+  transactionTitle: {
+    color: "white",
 
-    },
+    fontSize: 14,
 
-    smallTitle: {
+    marginLeft: 8,
 
-        color: '#94a3b8',
+    fontWeight: "700",
+  },
 
-        marginBottom: 10,
+  mainAmount: {
+    color: "white",
 
-    },
+    fontSize: 30,
 
-    creditText: {
+    fontWeight: "bold",
+  },
 
-        color: '#22c55e',
+  date: {
+    color: "#94a3b8",
 
-        fontSize: 24,
+    marginTop: 6,
 
-        fontWeight: 'bold',
+    fontSize: 12,
+  },
 
-    },
+  typeBadge: {
+    paddingHorizontal: 14,
 
-    debitText: {
+    paddingVertical: 8,
 
-        color: '#ef4444',
+    borderRadius: 20,
+  },
 
-        fontSize: 24,
+  typeText: {
+    color: "white",
 
-        fontWeight: 'bold',
+    fontWeight: "bold",
 
-    },
+    textTransform: "capitalize",
+  },
 
-    noData: {
+  infoRow: {
+    flexDirection: "row",
 
-        color: '#94a3b8',
+    alignItems: "center",
 
-        textAlign: 'center',
+    marginTop: 12,
+  },
 
-        marginTop: 50,
+  infoText: {
+    color: "#cbd5e1",
 
-        fontSize: 16,
+    marginLeft: 10,
 
-    },
+    fontSize: 14,
+  },
 
-    card: {
+  emptyBox: {
+    marginTop: 120,
 
-        backgroundColor: '#1e293b',
+    alignItems: "center",
+  },
 
-        padding: 18,
+  emptyText: {
+    color: "#64748b",
 
-        borderRadius: 15,
+    marginTop: 14,
 
-        marginBottom: 15,
-
-        flexDirection: 'row',
-
-        justifyContent: 'space-between',
-
-        alignItems: 'center',
-
-    },
-
-    title: {
-
-        color: 'white',
-
-        fontSize: 18,
-
-        fontWeight: 'bold',
-
-    },
-
-    date: {
-
-        color: '#94a3b8',
-
-        marginTop: 5,
-
-    },
-
-    creditAmount: {
-
-        color: '#22c55e',
-
-        fontSize: 20,
-
-        fontWeight: 'bold',
-
-    },
-
-    debitAmount: {
-
-        color: '#ef4444',
-
-        fontSize: 20,
-
-        fontWeight: 'bold',
-
-    },
-
+    fontSize: 16,
+  },
 });

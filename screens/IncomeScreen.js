@@ -1,262 +1,188 @@
-import React, { useState } from 'react';
+import { useEffect, useState } from "react";
 
 import {
-    View,
+    Alert,
+    StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    StyleSheet,
-    ScrollView,
-    Alert,
-} from 'react-native';
+    View,
+} from "react-native";
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export default function IncomeScreen({
-    navigation,
-}) {
+export default function AddIncomeScreen({ navigation }) {
+  const [amount, setAmount] = useState("");
 
-    const [amount, setAmount] =
-        useState('');
+  const [mode, setMode] = useState("");
 
-    const [mode, setMode] =
-        useState('');
+  const [selectedBank, setSelectedBank] = useState(null);
 
-    const [date, setDate] =
-        useState(
-            new Date()
-                .toISOString()
-                .split('T')[0]
-        );
+  useEffect(() => {
+    loadBank();
+  }, []);
 
-    const saveIncome = async () => {
+  const loadBank = async () => {
+    const bank = JSON.parse(await AsyncStorage.getItem("selectedBank"));
 
-        if (
-            !amount ||
-            !mode ||
-            !date
-        ) {
+    setSelectedBank(bank);
+  };
 
-            Alert.alert(
-                'Please fill all fields'
-            );
+  const addIncome = async () => {
+    if (!amount || !mode) {
+      Alert.alert("Fill all fields");
 
-            return;
+      return;
+    }
 
-        }
+    const incomeAmount = Number(amount);
 
-        try {
+    const banks = JSON.parse(await AsyncStorage.getItem("banks")) || [];
 
-            const oldIncome =
+    const updatedBanks = banks.map((bank) => {
+      if (bank.id === selectedBank.id) {
+        return {
+          ...bank,
 
-                JSON.parse(
+          balance: bank.balance + incomeAmount,
+        };
+      }
 
-                    await AsyncStorage.getItem(
-                        'incomeHistory'
-                    )
+      return bank;
+    });
 
-                ) || [];
+    const updatedSelected = updatedBanks.find((b) => b.id === selectedBank.id);
 
-            const incomeData = {
+    await AsyncStorage.setItem(
+      "banks",
 
-                id: Date.now(),
-
-                amount: Number(amount),
-
-                mode: mode,
-
-                date: date,
-
-            };
-
-            const updatedIncome = [
-
-                incomeData,
-
-                ...oldIncome,
-
-            ];
-
-            await AsyncStorage.setItem(
-
-                'incomeHistory',
-
-                JSON.stringify(
-                    updatedIncome
-                )
-
-            );
-
-            Alert.alert(
-                'Income Added Successfully'
-            );
-
-            navigation.goBack();
-
-        }
-
-        catch (error) {
-
-            console.log(error);
-
-            Alert.alert(
-                'Error saving income'
-            );
-
-        }
-
-    };
-
-    return (
-
-        <ScrollView
-            style={styles.container}
-        >
-
-            <Text style={styles.heading}>
-                Add Income
-            </Text>
-
-            <TextInput
-
-                placeholder="Enter Income Amount"
-
-                placeholderTextColor="#94a3b8"
-
-                style={styles.input}
-
-                keyboardType="numeric"
-
-                value={amount}
-
-                onChangeText={setAmount}
-
-            />
-
-            <TextInput
-
-                placeholder="Income Mode"
-
-                placeholderTextColor="#94a3b8"
-
-                style={styles.input}
-
-                value={mode}
-
-                onChangeText={setMode}
-
-            />
-
-            <Text style={styles.label}>
-                Select Income Date
-            </Text>
-
-            <TextInput
-
-                value={date}
-
-                onChangeText={setDate}
-
-                placeholder="YYYY-MM-DD"
-
-                placeholderTextColor="#94a3b8"
-
-                style={styles.input}
-
-            />
-
-            <TouchableOpacity
-
-                style={styles.saveButton}
-
-                onPress={saveIncome}
-
-            >
-
-                <Text style={styles.buttonText}>
-                    Save Income
-                </Text>
-
-            </TouchableOpacity>
-
-        </ScrollView>
-
+      JSON.stringify(updatedBanks),
     );
 
+    await AsyncStorage.setItem(
+      "selectedBank",
+
+      JSON.stringify(updatedSelected),
+    );
+
+    const oldIncome =
+      JSON.parse(await AsyncStorage.getItem("incomeHistory")) || [];
+
+    const newIncome = {
+      amount: incomeAmount,
+
+      mode,
+
+      type: "income",
+
+      bankName: selectedBank.name,
+
+      beforeBalance: selectedBank.balance,
+
+      afterBalance: updatedSelected.balance,
+
+      date: new Date().toISOString().split("T")[0],
+    };
+
+    oldIncome.push(newIncome);
+
+    await AsyncStorage.setItem(
+      "incomeHistory",
+
+      JSON.stringify(oldIncome),
+    );
+
+    Alert.alert("Success", "Income Added");
+
+    navigation.goBack();
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Add Income</Text>
+
+      <Text style={styles.bank}>Active Bank: {selectedBank?.name}</Text>
+
+      <TextInput
+        placeholder="Amount"
+        placeholderTextColor="#94a3b8"
+        keyboardType="numeric"
+        style={styles.input}
+        value={amount}
+        onChangeText={setAmount}
+      />
+
+      <TextInput
+        placeholder="Income Mode"
+        placeholderTextColor="#94a3b8"
+        style={styles.input}
+        value={mode}
+        onChangeText={setMode}
+      />
+
+      <TouchableOpacity style={styles.button} onPress={addIncome}>
+        <Text style={styles.btnText}>Save Income</Text>
+      </TouchableOpacity>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
 
-    container: {
+    backgroundColor: "#020617",
 
-        flex: 1,
+    padding: 20,
 
-        backgroundColor: '#020B2D',
+    justifyContent: "center",
+  },
 
-        padding: 20,
+  title: {
+    color: "white",
 
-    },
+    fontSize: 30,
 
-    heading: {
+    fontWeight: "bold",
 
-        color: '#fff',
+    marginBottom: 12,
+  },
 
-        fontSize: 28,
+  bank: {
+    color: "#3b82f6",
 
-        fontWeight: 'bold',
+    marginBottom: 25,
 
-        marginTop: 60,
+    fontSize: 15,
+  },
 
-        marginBottom: 30,
+  input: {
+    backgroundColor: "#111827",
 
-    },
+    borderRadius: 18,
 
-    input: {
+    padding: 16,
 
-        backgroundColor: '#1c2942',
+    color: "white",
 
-        borderRadius: 12,
+    marginBottom: 16,
+  },
 
-        padding: 16,
+  button: {
+    backgroundColor: "#16a34a",
 
-        color: '#fff',
+    padding: 18,
 
-        marginBottom: 18,
+    borderRadius: 18,
 
-    },
+    alignItems: "center",
+  },
 
-    label: {
+  btnText: {
+    color: "white",
 
-        color: '#fff',
+    fontWeight: "bold",
 
-        marginBottom: 10,
-
-        fontWeight: '600',
-
-    },
-
-    saveButton: {
-
-        backgroundColor: '#16a34a',
-
-        padding: 16,
-
-        borderRadius: 12,
-
-        alignItems: 'center',
-
-        marginTop: 10,
-
-    },
-
-    buttonText: {
-
-        color: '#fff',
-
-        fontWeight: 'bold',
-
-        fontSize: 16,
-
-    },
-
+    fontSize: 16,
+  },
 });

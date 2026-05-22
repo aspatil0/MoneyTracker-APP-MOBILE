@@ -1,353 +1,252 @@
-import React, { useState } from 'react';
+import { useEffect, useState } from "react";
 
 import {
-    View,
+    Alert,
+    StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    StyleSheet,
-    ScrollView,
-    Alert,
-} from 'react-native';
+    View,
+} from "react-native";
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export default function AddTransactionScreen({
-    navigation,
-}) {
+export default function AddTransactionScreen({ navigation }) {
+  const [title, setTitle] = useState("");
 
-    const [title, setTitle] =
-        useState('');
+  const [amount, setAmount] = useState("");
 
-    const [amount, setAmount] =
-        useState('');
+  const [type, setType] = useState("debited");
 
-    const [type, setType] =
-        useState('credited');
+  const [selectedBank, setSelectedBank] = useState(null);
 
-    const [date, setDate] =
-        useState(
-            new Date()
-                .toISOString()
-                .split('T')[0]
-        );
+  useEffect(() => {
+    loadBank();
+  }, []);
 
-    const saveTransaction = async () => {
+  const loadBank = async () => {
+    const bank = JSON.parse(await AsyncStorage.getItem("selectedBank"));
 
-        if (
-            !title ||
-            !amount ||
-            !date
-        ) {
+    setSelectedBank(bank);
+  };
 
-            Alert.alert(
-                'Please fill all fields'
-            );
+  const saveTransaction = async () => {
+    if (!title || !amount) {
+      Alert.alert("Fill all fields");
 
-            return;
+      return;
+    }
 
+    const transactionAmount = Number(amount);
+
+    const banks = JSON.parse(await AsyncStorage.getItem("banks")) || [];
+
+    const updatedBanks = banks.map((bank) => {
+      if (bank.id === selectedBank.id) {
+        let updatedBalance = bank.balance;
+
+        if (type === "credited") {
+          updatedBalance += transactionAmount;
+        } else {
+          updatedBalance -= transactionAmount;
         }
 
-        try {
+        return {
+          ...bank,
 
-            const oldTransactions =
+          balance: updatedBalance,
+        };
+      }
 
-                JSON.parse(
+      return bank;
+    });
 
-                    await AsyncStorage.getItem(
-                        'transactions'
-                    )
+    const updatedSelected = updatedBanks.find((b) => b.id === selectedBank.id);
 
-                ) || [];
+    await AsyncStorage.setItem(
+      "banks",
 
-            const newTransaction = {
-
-                id: Date.now(),
-
-                title: title,
-
-                amount: Number(amount),
-
-                type: type,
-
-                date: date,
-
-            };
-
-            const updatedTransactions = [
-
-                newTransaction,
-
-                ...oldTransactions,
-
-            ];
-
-            await AsyncStorage.setItem(
-
-                'transactions',
-
-                JSON.stringify(
-                    updatedTransactions
-                )
-
-            );
-
-            Alert.alert(
-                'Transaction Added Successfully'
-            );
-
-            navigation.goBack();
-
-        }
-
-        catch (error) {
-
-            console.log(error);
-
-            Alert.alert(
-                'Error saving transaction'
-            );
-
-        }
-
-    };
-
-    return (
-
-        <ScrollView
-            style={styles.container}
-        >
-
-            <Text style={styles.heading}>
-                Add Transaction
-            </Text>
-
-            {/* TITLE */}
-
-            <TextInput
-
-                placeholder="Enter Item Name"
-
-                placeholderTextColor="#94a3b8"
-
-                style={styles.input}
-
-                value={title}
-
-                onChangeText={setTitle}
-
-            />
-
-            {/* AMOUNT */}
-
-            <TextInput
-
-                placeholder="Enter Amount"
-
-                placeholderTextColor="#94a3b8"
-
-                style={styles.input}
-
-                keyboardType="numeric"
-
-                value={amount}
-
-                onChangeText={setAmount}
-
-            />
-
-            {/* DATE */}
-
-            <Text style={styles.label}>
-                Select Transaction Date
-            </Text>
-
-            <TextInput
-
-                value={date}
-
-                onChangeText={setDate}
-
-                placeholder="YYYY-MM-DD"
-
-                placeholderTextColor="#94a3b8"
-
-                style={styles.input}
-
-            />
-
-            {/* CREDIT */}
-
-            <TouchableOpacity
-
-                style={[
-
-                    styles.typeButton,
-
-                    type === 'credited' &&
-                    styles.creditButton,
-
-                ]}
-
-                onPress={() =>
-                    setType('credited')
-                }
-
-            >
-
-                <Text style={styles.buttonText}>
-                    Credited
-                </Text>
-
-            </TouchableOpacity>
-
-            {/* DEBIT */}
-
-            <TouchableOpacity
-
-                style={[
-
-                    styles.typeButton,
-
-                    type === 'debited' &&
-                    styles.debitButton,
-
-                ]}
-
-                onPress={() =>
-                    setType('debited')
-                }
-
-            >
-
-                <Text style={styles.buttonText}>
-                    Debited
-                </Text>
-
-            </TouchableOpacity>
-
-            {/* SAVE */}
-
-            <TouchableOpacity
-
-                style={styles.saveButton}
-
-                onPress={saveTransaction}
-
-            >
-
-                <Text style={styles.buttonText}>
-                    Save Transaction
-                </Text>
-
-            </TouchableOpacity>
-
-            <View style={{ height: 100 }} />
-
-        </ScrollView>
-
+      JSON.stringify(updatedBanks),
     );
 
+    await AsyncStorage.setItem(
+      "selectedBank",
+
+      JSON.stringify(updatedSelected),
+    );
+
+    const oldTransactions =
+      JSON.parse(await AsyncStorage.getItem("transactions")) || [];
+
+    const transaction = {
+      title,
+
+      amount: transactionAmount,
+
+      type,
+
+      bankName: selectedBank.name,
+
+      beforeBalance: selectedBank.balance,
+
+      afterBalance: updatedSelected.balance,
+
+      date: new Date().toISOString().split("T")[0],
+    };
+
+    oldTransactions.push(transaction);
+
+    await AsyncStorage.setItem(
+      "transactions",
+
+      JSON.stringify(oldTransactions),
+    );
+
+    Alert.alert("Success", "Transaction Added");
+
+    navigation.goBack();
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Add Transaction</Text>
+
+      <Text style={styles.bank}>Active Bank: {selectedBank?.name}</Text>
+
+      <TextInput
+        placeholder="Title"
+        placeholderTextColor="#94a3b8"
+        style={styles.input}
+        value={title}
+        onChangeText={setTitle}
+      />
+
+      <TextInput
+        placeholder="Amount"
+        placeholderTextColor="#94a3b8"
+        keyboardType="numeric"
+        style={styles.input}
+        value={amount}
+        onChangeText={setAmount}
+      />
+
+      <View style={styles.typeRow}>
+        <TouchableOpacity
+          style={[
+            styles.typeBtn,
+
+            type === "credited" && {
+              backgroundColor: "#16a34a",
+            },
+          ]}
+          onPress={() => setType("credited")}
+        >
+          <Text style={styles.typeText}>Credited</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.typeBtn,
+
+            type === "debited" && {
+              backgroundColor: "#dc2626",
+            },
+          ]}
+          onPress={() => setType("debited")}
+        >
+          <Text style={styles.typeText}>Debited</Text>
+        </TouchableOpacity>
+      </View>
+
+      <TouchableOpacity style={styles.button} onPress={saveTransaction}>
+        <Text style={styles.btnText}>Save Transaction</Text>
+      </TouchableOpacity>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
 
-    container: {
+    backgroundColor: "#020617",
 
-        flex: 1,
+    padding: 20,
 
-        backgroundColor: '#020B2D',
+    justifyContent: "center",
+  },
 
-        padding: 20,
+  title: {
+    color: "white",
 
-    },
+    fontSize: 30,
 
-    heading: {
+    fontWeight: "bold",
 
-        color: '#fff',
+    marginBottom: 12,
+  },
 
-        fontSize: 28,
+  bank: {
+    color: "#3b82f6",
 
-        fontWeight: 'bold',
+    marginBottom: 25,
 
-        marginTop: 60,
+    fontSize: 15,
+  },
 
-        marginBottom: 30,
+  input: {
+    backgroundColor: "#111827",
 
-    },
+    borderRadius: 18,
 
-    input: {
+    padding: 16,
 
-        backgroundColor: '#1c2942',
+    color: "white",
 
-        borderRadius: 12,
+    marginBottom: 16,
+  },
 
-        padding: 16,
+  typeRow: {
+    flexDirection: "row",
 
-        color: '#fff',
+    justifyContent: "space-between",
 
-        marginBottom: 18,
+    marginBottom: 20,
+  },
 
-    },
+  typeBtn: {
+    width: "48%",
 
-    label: {
+    backgroundColor: "#1e293b",
 
-        color: '#fff',
+    padding: 18,
 
-        marginBottom: 10,
+    borderRadius: 16,
 
-        fontWeight: '600',
+    alignItems: "center",
+  },
 
-    },
+  typeText: {
+    color: "white",
 
-    typeButton: {
+    fontWeight: "bold",
+  },
 
-        backgroundColor: '#334155',
+  button: {
+    backgroundColor: "#2563eb",
 
-        padding: 16,
+    padding: 18,
 
-        borderRadius: 12,
+    borderRadius: 18,
 
-        alignItems: 'center',
+    alignItems: "center",
+  },
 
-        marginBottom: 14,
+  btnText: {
+    color: "white",
 
-    },
+    fontWeight: "bold",
 
-    creditButton: {
-
-        backgroundColor: '#16a34a',
-
-    },
-
-    debitButton: {
-
-        backgroundColor: '#dc2626',
-
-    },
-
-    saveButton: {
-
-        backgroundColor: '#2563eb',
-
-        padding: 16,
-
-        borderRadius: 12,
-
-        alignItems: 'center',
-
-        marginTop: 10,
-
-    },
-
-    buttonText: {
-
-        color: '#fff',
-
-        fontWeight: 'bold',
-
-        fontSize: 16,
-
-    },
-
+    fontSize: 16,
+  },
 });

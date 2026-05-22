@@ -1,51 +1,39 @@
-import React, {
+// screens/ProfileScreen.js
+
+import {
     useEffect,
     useState,
 } from 'react';
 
 import {
-    View,
-    Text,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    ScrollView,
     Alert,
     Image,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import * as FileSystem from 'expo-file-system';
-
-import * as Sharing from 'expo-sharing';
-
-import * as XLSX from 'xlsx';
-
 export default function ProfileScreen() {
 
     const [name, setName] =
-        useState('');
+        useState('Adityaraj Patil');
 
     const [email, setEmail] =
+        useState('adityaraj@gmail.com');
+
+    const [mobile,
+        setMobile] =
         useState('');
 
-    const [mobile, setMobile] =
-        useState('');
-
-    const [month, setMonth] =
-        useState(
-            String(
-                new Date().getMonth() + 1
-            ).padStart(2, '0')
-        );
-
-    const [year, setYear] =
-        useState(
-            new Date()
-                .getFullYear()
-                .toString()
-        );
+    const [showWarning,
+        setShowWarning] =
+        useState(false);
 
     // LOAD PROFILE
 
@@ -53,29 +41,47 @@ export default function ProfileScreen() {
 
         try {
 
-            const savedName =
+            const storedName =
+
                 await AsyncStorage.getItem(
                     'profile_name'
                 );
 
-            const savedEmail =
+            const storedEmail =
+
                 await AsyncStorage.getItem(
                     'profile_email'
                 );
 
-            const savedMobile =
+            const storedMobile =
+
                 await AsyncStorage.getItem(
                     'profile_mobile'
                 );
 
-            if (savedName)
-                setName(savedName);
+            if (storedName) {
 
-            if (savedEmail)
-                setEmail(savedEmail);
+                setName(
+                    storedName
+                );
 
-            if (savedMobile)
-                setMobile(savedMobile);
+            }
+
+            if (storedEmail) {
+
+                setEmail(
+                    storedEmail
+                );
+
+            }
+
+            if (storedMobile) {
+
+                setMobile(
+                    storedMobile
+                );
+
+            }
 
         }
 
@@ -86,6 +92,12 @@ export default function ProfileScreen() {
         }
 
     };
+
+    useEffect(() => {
+
+        loadProfile();
+
+    }, []);
 
     // SAVE PROFILE
 
@@ -109,7 +121,7 @@ export default function ProfileScreen() {
             );
 
             Alert.alert(
-                'Profile Saved'
+                'Profile Updated'
             );
 
         }
@@ -121,203 +133,6 @@ export default function ProfileScreen() {
         }
 
     };
-
-    // DOWNLOAD EXCEL
-
-    const downloadExcel = async () => {
-
-        try {
-
-            const transactions =
-
-                JSON.parse(
-
-                    await AsyncStorage.getItem(
-                        'transactions'
-                    )
-
-                ) || [];
-
-            const incomeHistory =
-
-                JSON.parse(
-
-                    await AsyncStorage.getItem(
-                        'incomeHistory'
-                    )
-
-                ) || [];
-
-            let finalData = [];
-
-            // TRANSACTIONS
-
-            transactions.forEach((item) => {
-
-                const splitDate =
-                    item.date.split('-');
-
-                if (
-
-                    splitDate[0] ===
-                    year &&
-
-                    splitDate[1] ===
-                    month
-
-                ) {
-
-                    finalData.push({
-
-                        Type:
-                            item.type,
-
-                        Title:
-                            item.title,
-
-                        Amount:
-                            item.amount,
-
-                        Date:
-                            item.date,
-
-                    });
-
-                }
-
-            });
-
-            // INCOME
-
-            incomeHistory.forEach((item) => {
-
-                const splitDate =
-                    item.date.split('-');
-
-                if (
-
-                    splitDate[0] ===
-                    year &&
-
-                    splitDate[1] ===
-                    month
-
-                ) {
-
-                    finalData.push({
-
-                        Type:
-                            'income',
-
-                        Title:
-                            item.mode,
-
-                        Amount:
-                            item.amount,
-
-                        Date:
-                            item.date,
-
-                    });
-
-                }
-
-            });
-
-            if (
-                finalData.length === 0
-            ) {
-
-                Alert.alert(
-                    'No Data Found'
-                );
-
-                return;
-
-            }
-
-            // CREATE WORKBOOK
-
-            const worksheet =
-
-                XLSX.utils.json_to_sheet(
-                    finalData
-                );
-
-            const workbook =
-
-                XLSX.utils.book_new();
-
-            XLSX.utils.book_append_sheet(
-
-                workbook,
-
-                worksheet,
-
-                'MoneyData'
-
-            );
-
-            const excelBinary =
-
-                XLSX.write(
-
-                    workbook,
-
-                    {
-
-                        type: 'base64',
-
-                        bookType: 'xlsx',
-
-                    }
-
-                );
-
-            const fileUri =
-
-                FileSystem.documentDirectory +
-
-                `MoneyManager_${month}_${year}.xlsx`;
-
-            await FileSystem.writeAsStringAsync(
-
-                fileUri,
-
-                excelBinary,
-
-                {
-
-                    encoding:
-                        FileSystem.EncodingType.Base64,
-
-                }
-
-            );
-
-            await Sharing.shareAsync(
-                fileUri
-            );
-
-        }
-
-        catch (error) {
-
-            console.log(error);
-
-            Alert.alert(
-                'Error generating excel'
-            );
-
-        }
-
-    };
-
-    useEffect(() => {
-
-        loadProfile();
-
-    }, []);
 
     return (
 
@@ -325,26 +140,54 @@ export default function ProfileScreen() {
             style={styles.container}
         >
 
-            {/* PROFILE */}
+            {/* WARNING ICON */}
 
-            <View style={styles.profileSection}>
+            <TouchableOpacity
+
+                style={styles.warningIcon}
+
+                onPress={() =>
+                    setShowWarning(true)
+                }
+
+            >
+
+                <Text style={styles.warningEmoji}>
+                    ⚠
+                </Text>
+
+            </TouchableOpacity>
+
+            {/* PROFILE IMAGE */}
+
+            <View
+                style={
+                    styles.imageContainer
+                }
+            >
 
                 <Image
 
                     source={{
+
                         uri:
-                            'https://i.pravatar.cc/300',
+                            'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
+
                     }}
 
-                    style={styles.profileImage}
+                    style={
+                        styles.profileImage
+                    }
 
                 />
 
-                <Text style={styles.heading}>
-                    Profile
-                </Text>
-
             </View>
+
+            {/* TITLE */}
+
+            <Text style={styles.heading}>
+                Profile
+            </Text>
 
             {/* NAME */}
 
@@ -356,7 +199,9 @@ export default function ProfileScreen() {
 
                 value={name}
 
-                onChangeText={setName}
+                onChangeText={
+                    setName
+                }
 
                 placeholder="Enter Name"
 
@@ -376,7 +221,9 @@ export default function ProfileScreen() {
 
                 value={email}
 
-                onChangeText={setEmail}
+                onChangeText={
+                    setEmail
+                }
 
                 placeholder="Enter Email"
 
@@ -396,19 +243,21 @@ export default function ProfileScreen() {
 
                 value={mobile}
 
-                onChangeText={setMobile}
+                onChangeText={
+                    setMobile
+                }
 
                 placeholder="Optional"
 
                 placeholderTextColor="#64748b"
 
-                keyboardType="numeric"
+                keyboardType="phone-pad"
 
                 style={styles.input}
 
             />
 
-            {/* SAVE */}
+            {/* SAVE BUTTON */}
 
             <TouchableOpacity
 
@@ -418,7 +267,7 @@ export default function ProfileScreen() {
 
             >
 
-                <Text style={styles.buttonText}>
+                <Text style={styles.saveText}>
                     Save Profile
                 </Text>
 
@@ -426,71 +275,99 @@ export default function ProfileScreen() {
 
             {/* DOWNLOAD */}
 
-            <Text style={styles.downloadTitle}>
-                Download Monthly Data
-            </Text>
-
-            {/* MONTH */}
-
-            <Text style={styles.label}>
-                Month
-            </Text>
-
-            <TextInput
-
-                value={month}
-
-                onChangeText={setMonth}
-
-                placeholder="05"
-
-                placeholderTextColor="#64748b"
-
-                keyboardType="numeric"
-
-                style={styles.input}
-
-            />
-
-            {/* YEAR */}
-
-            <Text style={styles.label}>
-                Year
-            </Text>
-
-            <TextInput
-
-                value={year}
-
-                onChangeText={setYear}
-
-                placeholder="2025"
-
-                placeholderTextColor="#64748b"
-
-                keyboardType="numeric"
-
-                style={styles.input}
-
-            />
-
-            {/* DOWNLOAD BUTTON */}
-
             <TouchableOpacity
-
-                style={styles.downloadButton}
-
-                onPress={downloadExcel}
-
+                style={
+                    styles.downloadButton
+                }
             >
 
-                <Text style={styles.buttonText}>
-                    Download Excel
+                <Text
+                    style={
+                        styles.downloadText
+                    }
+                >
+
+                    Download Monthly Data
+
+                </Text>
+
+                <Text
+                    style={
+                        styles.comingSoon
+                    }
+                >
+
+                    Coming Soon
+
                 </Text>
 
             </TouchableOpacity>
 
-            <View style={{ height: 100 }} />
+            {/* WARNING MODAL */}
+
+            <Modal
+
+                visible={showWarning}
+
+                transparent
+
+                animationType="fade"
+
+            >
+
+                <View style={styles.modalOverlay}>
+
+                    <View style={styles.modalCard}>
+
+                        <Text style={styles.modalTitle}>
+                            Warning
+                        </Text>
+
+                        <Text style={styles.modalText}>
+
+                            Do not clear app cache
+                            or uninstall app.
+
+                            {'\n\n'}
+
+                            All app data is currently
+                            stored locally on your
+                            device.
+
+                            {'\n\n'}
+
+                            Database backup system
+                            is not added yet.
+
+                        </Text>
+
+                        <TouchableOpacity
+
+                            style={styles.closeButton}
+
+                            onPress={() =>
+                                setShowWarning(false)
+                            }
+
+                        >
+
+                            <Text style={styles.closeText}>
+                                Close
+                            </Text>
+
+                        </TouchableOpacity>
+
+                    </View>
+
+                </View>
+
+            </Modal>
+
+            <View
+                style={{
+                    height: 100,
+                }}
+            />
 
         </ScrollView>
 
@@ -510,25 +387,43 @@ const styles = StyleSheet.create({
 
     },
 
-    profileSection: {
+    warningIcon: {
+
+        position: 'absolute',
+
+        right: 20,
+
+        top: 60,
+
+        zIndex: 10,
+
+    },
+
+    warningEmoji: {
+
+        fontSize: 26,
+
+    },
+
+    imageContainer: {
 
         alignItems: 'center',
 
         marginTop: 50,
 
-        marginBottom: 30,
+        marginBottom: 20,
 
     },
 
     profileImage: {
 
-        width: 110,
+        width: 120,
 
-        height: 110,
+        height: 120,
 
         borderRadius: 60,
 
-        marginBottom: 15,
+        backgroundColor: '#1e293b',
 
     },
 
@@ -536,9 +431,13 @@ const styles = StyleSheet.create({
 
         color: 'white',
 
-        fontSize: 32,
+        fontSize: 34,
 
         fontWeight: 'bold',
+
+        textAlign: 'center',
+
+        marginBottom: 30,
 
     },
 
@@ -546,7 +445,7 @@ const styles = StyleSheet.create({
 
         color: '#94a3b8',
 
-        fontSize: 13,
+        fontSize: 14,
 
         marginBottom: 8,
 
@@ -558,9 +457,9 @@ const styles = StyleSheet.create({
 
         backgroundColor: '#111827',
 
-        borderRadius: 14,
+        borderRadius: 16,
 
-        padding: 15,
+        padding: 16,
 
         color: 'white',
 
@@ -570,53 +469,132 @@ const styles = StyleSheet.create({
 
     saveButton: {
 
-        backgroundColor: '#2563eb',
+        backgroundColor: '#22c55e',
 
-        padding: 16,
+        padding: 18,
 
-        borderRadius: 15,
-
-        marginTop: 25,
+        borderRadius: 18,
 
         alignItems: 'center',
+
+        marginTop: 30,
+
+    },
+
+    saveText: {
+
+        color: 'white',
+
+        fontSize: 16,
+
+        fontWeight: 'bold',
 
     },
 
     downloadButton: {
 
-        backgroundColor: '#22c55e',
+        backgroundColor: '#2563eb',
 
-        padding: 16,
+        padding: 18,
 
-        borderRadius: 15,
+        borderRadius: 18,
 
-        marginTop: 20,
+        marginTop: 30,
 
         alignItems: 'center',
 
     },
 
-    buttonText: {
+    downloadText: {
+
+        color: 'white',
+
+        fontSize: 16,
+
+        fontWeight: 'bold',
+
+    },
+
+    comingSoon: {
+
+        color: '#cbd5e1',
+
+        marginTop: 6,
+
+        fontSize: 12,
+
+    },
+
+    modalOverlay: {
+
+        flex: 1,
+
+        backgroundColor:
+            'rgba(0,0,0,0.7)',
+
+        justifyContent: 'center',
+
+        alignItems: 'center',
+
+        padding: 20,
+
+    },
+
+    modalCard: {
+
+        backgroundColor: '#111827',
+
+        width: '100%',
+
+        borderRadius: 24,
+
+        padding: 25,
+
+    },
+
+    modalTitle: {
+
+        color: '#ef4444',
+
+        fontSize: 24,
+
+        fontWeight: 'bold',
+
+        marginBottom: 15,
+
+    },
+
+    modalText: {
+
+        color: '#fca5a5',
+
+        lineHeight: 24,
+
+        fontSize: 15,
+
+    },
+
+    closeButton: {
+
+        backgroundColor: '#ef4444',
+
+        padding: 15,
+
+        borderRadius: 16,
+
+        alignItems: 'center',
+
+        marginTop: 25,
+
+    },
+
+    closeText: {
 
         color: 'white',
 
         fontWeight: 'bold',
 
         fontSize: 15,
-
-    },
-
-    downloadTitle: {
-
-        color: 'white',
-
-        fontSize: 22,
-
-        fontWeight: 'bold',
-
-        marginTop: 35,
-
-        marginBottom: 10,
 
     },
 
